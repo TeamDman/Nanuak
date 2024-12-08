@@ -1,0 +1,20 @@
+[package]
+name = "nanuak-youtube-populate-details"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = { workspace = true }
+color-eyre = { workspace = true }
+eyre = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+clap = { workspace = true }
+diesel = { workspace = true }
+tokio = { workspace = true }
+nanuak-schema = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+url = { workspace = true }
+r2d2 = { workspace = true }
+reqwest = { workspace = true }
