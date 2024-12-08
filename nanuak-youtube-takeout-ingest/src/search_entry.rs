@@ -1,5 +1,7 @@
 use chrono::DateTime;
 use chrono::Local;
+use chrono::NaiveDateTime;
+use chrono::Utc;
 use eyre::bail;
 use url::Url;
 
@@ -7,7 +9,7 @@ use crate::entry::RawEntry;
 
 #[derive(Debug)]
 pub struct SearchEntry {
-    pub time: DateTime<Local>,
+    pub time: NaiveDateTime,
     pub query: String,
 }
 impl TryFrom<RawEntry> for SearchEntry {

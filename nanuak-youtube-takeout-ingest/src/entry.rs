@@ -1,5 +1,6 @@
 use chrono::DateTime;
 use chrono::Local;
+use chrono::NaiveDateTime;
 use color_eyre::eyre::Result;
 use eyre::bail;
 use eyre::Context;
@@ -12,7 +13,7 @@ use crate::watch_entry::WatchEntry;
 
 #[derive(Debug, Deserialize)]
 pub struct RawEntry {
-    pub time: DateTime<Local>,
+    pub time: NaiveDateTime,
     pub title: String,
     #[serde(rename = "titleUrl")]
     pub title_url: Option<String>,

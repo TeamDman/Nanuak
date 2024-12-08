@@ -1,3 +1,6 @@
+-- Drop the "posts" table
+DROP TABLE youtube.posts;
+
 -- Drop the "watch_history" table
 DROP TABLE youtube.watch_history;
 

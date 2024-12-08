@@ -16,3 +16,4 @@ nanuak-schema = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 url = { workspace = true}
+r2d2 = {workspace=true}

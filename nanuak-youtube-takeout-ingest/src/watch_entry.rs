@@ -1,5 +1,6 @@
 use chrono::DateTime;
 use chrono::Local;
+use chrono::NaiveDateTime;
 use eyre::bail;
 use url::Url;
 
@@ -7,7 +8,7 @@ use crate::entry::RawEntry;
 
 #[derive(Debug)]
 pub struct WatchEntry {
-    pub time: DateTime<Local>,
+    pub time: NaiveDateTime,
     pub youtube_video_id: String,
 }
 impl TryFrom<RawEntry> for WatchEntry {
