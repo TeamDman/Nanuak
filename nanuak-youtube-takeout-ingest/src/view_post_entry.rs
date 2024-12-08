@@ -1,6 +1,5 @@
 use chrono::DateTime;
 use chrono::Local;
-use chrono::NaiveDateTime;
 use eyre::bail;
 
 use crate::entry::RawEntry;

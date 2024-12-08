@@ -57,6 +57,7 @@ async fn main() -> Result<()> {
                                 search_dsl::time.eq(search_entry.time.naive_utc()),
                                 search_dsl::query.eq(search_entry.query),
                             ))
+                            .on_conflict_do_nothing()
                             .execute(&mut conn)?;
                         // info!("Inserted search entry: {:?}", search_entry);
                     }
@@ -66,6 +67,7 @@ async fn main() -> Result<()> {
                                 watch_dsl::time.eq(watch_entry.time.naive_utc()),
                                 watch_dsl::youtube_video_id.eq(watch_entry.youtube_video_id),
                             ))
+                            .on_conflict_do_nothing()
                             .execute(&mut conn)?;
                         // info!("Inserted watch entry: {:?}", watch_entry);
                     }
@@ -78,13 +80,14 @@ async fn main() -> Result<()> {
                                 posts_dsl::channel_url.eq(view_post_entry.channel_url),
                                 posts_dsl::channel_name.eq(view_post_entry.channel_name),
                             ))
+                            .on_conflict_do_nothing()
                             .execute(&mut conn)?;
                         // info!("Inserted view post entry: {:?}", view_post_entry);
                     }
                 }
                 success_count += 1;
             }
-            info!("Successfully inserted {} entries", success_count);
+            info!("Successfully inserted {} entries, some duplicates may have been ignored", success_count);
         }
     }
 
