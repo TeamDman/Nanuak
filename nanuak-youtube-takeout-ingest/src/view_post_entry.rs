@@ -1,3 +1,5 @@
+use chrono::DateTime;
+use chrono::Local;
 use chrono::NaiveDateTime;
 use eyre::bail;
 
@@ -5,7 +7,7 @@ use crate::entry::RawEntry;
 
 #[derive(Debug)]
 pub struct ViewPostEntry {
-    pub time: NaiveDateTime,
+    pub time: DateTime<Local>,
     pub post_title: String,
     pub post_url: String,
     pub channel_url: String,

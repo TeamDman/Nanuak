@@ -4,7 +4,7 @@ pub mod youtube {
     diesel::table! {
         youtube.posts (time) {
             time -> Timestamp,
-            #[max_length = 256]
+            #[max_length = 8192]
             post_title -> Varchar,
             post_url -> Text,
             channel_url -> Text,

@@ -37,6 +37,7 @@ async fn main() -> Result<()> {
     let manager = ConnectionManager::<PgConnection>::new(std::env::var("DATABASE_URL")?);
     let pool = Pool::builder().build(manager)?;
     let mut conn = pool.get()?;
+    info!("Established database connection");
 
     // Read the directory and process JSON files
     let mut entries = tokio::fs::read_dir(&args.ingest_dir).await?;
@@ -53,7 +54,7 @@ async fn main() -> Result<()> {
                     Entry::Search(search_entry) => {
                         diesel::insert_into(search_dsl::search_history)
                             .values((
-                                search_dsl::time.eq(search_entry.time),
+                                search_dsl::time.eq(search_entry.time.naive_utc()),
                                 search_dsl::query.eq(search_entry.query),
                             ))
                             .execute(&mut conn)?;
@@ -62,7 +63,7 @@ async fn main() -> Result<()> {
                     Entry::Watch(watch_entry) => {
                         diesel::insert_into(watch_dsl::watch_history)
                             .values((
-                                watch_dsl::time.eq(watch_entry.time),
+                                watch_dsl::time.eq(watch_entry.time.naive_utc()),
                                 watch_dsl::youtube_video_id.eq(watch_entry.youtube_video_id),
                             ))
                             .execute(&mut conn)?;
@@ -71,7 +72,7 @@ async fn main() -> Result<()> {
                     Entry::ViewPost(view_post_entry) => {
                         diesel::insert_into(posts_dsl::posts)
                             .values((
-                                posts_dsl::time.eq(view_post_entry.time),
+                                posts_dsl::time.eq(view_post_entry.time.naive_utc()),
                                 posts_dsl::post_title.eq(view_post_entry.post_title),
                                 posts_dsl::post_url.eq(view_post_entry.post_url),
                                 posts_dsl::channel_url.eq(view_post_entry.channel_url),

@@ -1,8 +1,10 @@
-use chrono::NaiveDateTime;
+use chrono::DateTime;
+use chrono::Local;
 use color_eyre::eyre::Result;
 use eyre::bail;
 use eyre::Context;
 use serde::Deserialize;
+use serde_json::Value;
 use std::path::PathBuf;
 
 use crate::search_entry::SearchEntry;
@@ -11,7 +13,7 @@ use crate::watch_entry::WatchEntry;
 
 #[derive(Debug, Deserialize)]
 pub struct RawEntry {
-    pub time: NaiveDateTime,
+    pub time: DateTime<Local>,
     pub title: String,
     #[serde(rename = "titleUrl")]
     pub title_url: Option<String>,
@@ -25,7 +27,8 @@ pub struct ActivitySubtitle {
 
 pub async fn load_entries(file: &PathBuf) -> Result<Vec<Entry>> {
     let contents = tokio::fs::read_to_string(file).await?;
-    let entries: Vec<RawEntry> = serde_json::from_str(&contents)?;
+    let entries: Value = serde_json::from_str(&contents)?;
+    let entries: Vec<RawEntry> = serde_json::from_value(entries)?;
     let entries: Vec<Entry> = entries
         .into_iter()
         .enumerate()

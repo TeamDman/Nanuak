@@ -16,7 +16,7 @@ CREATE TABLE youtube.watch_history (
 -- Create the "posts" table with a primary key
 CREATE TABLE youtube.posts (
     time TIMESTAMP NOT NULL PRIMARY KEY,
-    post_title VARCHAR(256) NOT NULL,
+    post_title VARCHAR(8192) NOT NULL,
     post_url TEXT NOT NULL,
     channel_url TEXT NOT NULL,
     channel_name VARCHAR(128) NOT NULL
