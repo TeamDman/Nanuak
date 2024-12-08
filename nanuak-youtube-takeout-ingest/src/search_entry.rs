@@ -1,7 +1,4 @@
-use chrono::DateTime;
-use chrono::Local;
 use chrono::NaiveDateTime;
-use chrono::Utc;
 use eyre::bail;
 use url::Url;
 
@@ -33,10 +30,10 @@ impl TryFrom<RawEntry> for SearchEntry {
             match query_param {
                 Some(decoded_query) if decoded_query == query => {
                     // The title matches the search query
-                    return Ok(SearchEntry {
+                    Ok(SearchEntry {
                         time: entry.time,
                         query: query.to_string(),
-                    });
+                    })
                 }
                 Some(decoded_query) => {
                     bail!(

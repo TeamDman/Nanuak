@@ -1,5 +1,3 @@
-use chrono::DateTime;
-use chrono::Local;
 use chrono::NaiveDateTime;
 use color_eyre::eyre::Result;
 use eyre::bail;
@@ -36,7 +34,8 @@ pub async fn load_entries(file: &PathBuf) -> Result<Vec<Entry>> {
         .map(|(index, entry)| {
             Entry::try_from(entry).map_err(|e| eyre::eyre!("Error in entry {}: {}", index, e))
         })
-        .collect::<Result<Vec<_>>>().context(format!("Parsing {}", file.display()))?;
+        .collect::<Result<Vec<_>>>()
+        .context(format!("Parsing {}", file.display()))?;
     Ok(entries)
 }
 

@@ -1,6 +1,5 @@
-use chrono::{DateTime, Local, NaiveDateTime, Utc};
+use chrono::NaiveDateTime;
 use eyre::bail;
-use url::Url;
 
 use crate::entry::RawEntry;
 

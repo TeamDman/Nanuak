@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
 
     // Establish a database connection pool
     let manager = ConnectionManager::<PgConnection>::new(std::env::var("DATABASE_URL")?);
-    let mut pool = Pool::builder().build(manager)?;
+    let pool = Pool::builder().build(manager)?;
     let mut conn = pool.get()?;
 
     // Read the directory and process JSON files

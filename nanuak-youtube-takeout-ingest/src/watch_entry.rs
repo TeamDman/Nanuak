@@ -1,5 +1,3 @@
-use chrono::DateTime;
-use chrono::Local;
 use chrono::NaiveDateTime;
 use eyre::bail;
 use url::Url;
