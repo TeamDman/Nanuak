@@ -1,0 +1,1 @@
+cargo run --bin populate_categories -- --debug --region-code CA

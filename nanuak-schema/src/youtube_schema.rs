@@ -22,6 +22,15 @@ pub mod youtube {
     }
 
     diesel::table! {
+        youtube.video_categories (id) {
+            id -> Text,
+            title -> Text,
+            assignable -> Bool,
+            channel_id -> Text,
+        }
+    }
+
+    diesel::table! {
         youtube.video_thumbnails (id) {
             id -> Int4,
             video_etag -> Nullable<Text>,
@@ -78,6 +87,7 @@ pub mod youtube {
     diesel::allow_tables_to_appear_in_same_query!(
         posts,
         search_history,
+        video_categories,
         video_thumbnails,
         video_topics,
         videos,
