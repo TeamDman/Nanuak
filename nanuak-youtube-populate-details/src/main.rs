@@ -1,10 +1,11 @@
-use diesel::pg::data_types::PgInterval;
 use clap::Parser;
 use color_eyre::eyre::Result;
+use diesel::pg::data_types::PgInterval;
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use itertools::Itertools;
+use nanuak_schema::youtube;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
@@ -22,80 +23,101 @@ struct YouTubeResponse {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
 struct YouTubeItem {
+    #[serde(rename = "etag")]
     etag: String,
+    #[serde(rename = "id")]
     id: String,
-    contentDetails: ContentDetails,
+    #[serde(rename = "contentDetails")]
+    content_details: ContentDetails,
+    #[serde(rename = "snippet")]
     snippet: Snippet,
+    #[serde(rename = "statistics")]
     statistics: Option<Statistics>,
+    #[serde(rename = "status")]
     status: Option<Status>,
-    topicDetails: Option<TopicDetails>,
+    #[serde(rename = "topicDetails")]
+    topic_details: Option<TopicDetails>,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
 struct ContentDetails {
+    #[serde(rename = "duration")]
     duration: String,
+    #[serde(rename = "caption")]
     caption: Option<String>, // "true" or "false"
-    licensedContent: Option<bool>,
+    #[serde(rename = "licensedContent")]
+    licensed_content: Option<bool>,
+    #[serde(rename = "dimension")]
     dimension: Option<String>,
+    #[serde(rename = "definition")]
     definition: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
 struct Snippet {
-    publishedAt: String,
-    channelId: String,
+    #[serde(rename = "publishedAt")]
+    published_at: String,
+    #[serde(rename = "channelId")]
+    channel_id: String,
+    #[serde(rename = "title")]
     title: String,
+    #[serde(rename = "description")]
     description: String,
-    channelTitle: String,
-    categoryId: String,
+    #[serde(rename = "channelTitle")]
+    channel_title: String,
+    #[serde(rename = "categoryId")]
+    category_id: String,
+    #[serde(rename = "tags")]
     tags: Option<Vec<String>>,
+    #[serde(rename = "thumbnails")]
     thumbnails: Thumbnails,
 }
 
 #[derive(Debug, Deserialize)]
 struct Thumbnails {
-    #[serde(default)]
+    #[serde(rename = "default", default)]
     default: Option<Thumbnail>,
-    #[serde(default)]
+    #[serde(rename = "medium", default)]
     medium: Option<Thumbnail>,
-    #[serde(default)]
+    #[serde(rename = "high", default)]
     high: Option<Thumbnail>,
-    #[serde(default)]
+    #[serde(rename = "standard", default)]
     standard: Option<Thumbnail>,
-    #[serde(default)]
+    #[serde(rename = "maxres", default)]
     maxres: Option<Thumbnail>,
 }
 
 #[derive(Debug, Deserialize)]
 struct Thumbnail {
+    #[serde(rename = "url")]
     url: String,
+    #[serde(rename = "width")]
     width: Option<i32>,
+    #[serde(rename = "height")]
     height: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
 struct Statistics {
-    viewCount: Option<String>,
-    likeCount: Option<String>,
-    commentCount: Option<String>,
+    #[serde(rename = "viewCount")]
+    view_count: Option<String>,
+    #[serde(rename = "likeCount")]
+    like_count: Option<String>,
+    #[serde(rename = "commentCount")]
+    comment_count: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
 struct Status {
-    privacyStatus: String,
+    #[serde(rename = "privacyStatus")]
+    privacy_status: String,
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(non_snake_case)]
 struct TopicDetails {
-    #[serde(default)]
-    topicCategories: Vec<String>,
+    #[serde(rename = "topicCategories", default)]
+    topic_categories: Vec<String>,
 }
 
 /// Command-line arguments for the tool
@@ -105,27 +127,29 @@ struct Args {
     /// If set, fetch only this single video ID
     #[arg(short, long)]
     single_video_id: Option<String>,
+
+    /// If set, enable debug logging
+    #[arg(long)]
+    debug: bool,
+
+    /// How many pages of 50 videos to fetch
+    /// If not specified, defaults to 1
+    #[arg(long, default_value_t = 1)]
+    pages: u32,
 }
 
 /// Convert an ISO8601 duration (e.g., "PT26S") to a SQL interval.
 /// For now we do something naive, or we can parse it properly.
 fn parse_iso8601_duration_to_interval(duration: &str) -> Option<PgInterval> {
-    // For the sake of demonstration, let's just parse the format:
-    // For example: "PT26S" means 26 seconds.
-    // A full solution would handle minutes/hours. Let's keep it simple.
-    // In French: "C'est juste une démonstration simple."
     let trimmed = duration.trim_start_matches('P').trim_start_matches('T');
-    // This is a rough and incomplete parser:
     let mut seconds = 0;
     let mut minutes = 0;
     let mut hours = 0;
-    // If we see something like 1H2M30S...
     let mut current = String::new();
     for c in trimmed.chars() {
-        if c.is_digit(10) {
+        if c.is_ascii_digit() {
             current.push(c);
         } else {
-            // c might be S, M, H
             let val: i64 = current.parse().unwrap_or(0);
             current.clear();
             match c {
@@ -136,9 +160,7 @@ fn parse_iso8601_duration_to_interval(duration: &str) -> Option<PgInterval> {
             }
         }
     }
-    // Convert to total number of seconds:
     let total_seconds = hours * 3600 + minutes * 60 + seconds;
-    // SQL interval format:
     Some(PgInterval {
         months: 0,
         days: 0,
@@ -147,12 +169,11 @@ fn parse_iso8601_duration_to_interval(duration: &str) -> Option<PgInterval> {
 }
 
 /// Fetch up to 50 video IDs that we haven't fetched details for yet.
-/// We do this by looking at watch_history and left joining videos,
-/// selecting those without an entry in videos.
-fn get_next_video_ids_to_fetch(conn: &mut PgConnection, limit: i64) -> eyre::Result<Vec<String>> {
-    use nanuak_schema::youtube::watch_history::dsl as w;
-    use nanuak_schema::youtube::videos::dsl as v;
+fn get_next_video_ids_to_fetch(conn: &mut PgConnection, limit: i64) -> color_eyre::Result<Vec<String>> {
     use diesel::dsl::max;
+    use youtube::videos::dsl as v;
+    use youtube::watch_history::dsl as w;
+
     let ids = w::watch_history
         .left_join(v::videos.on(w::youtube_video_id.eq(v::video_id)))
         .filter(v::video_id.is_null())
@@ -172,7 +193,6 @@ async fn fetch_video_details(api_key: &str, video_ids: &[String]) -> Result<Vec<
     }
 
     let client = Client::new();
-    // Join video IDs with commas
     let ids = video_ids.iter().join(",");
     let url = format!(
         "https://www.googleapis.com/youtube/v3/videos?part=contentDetails,id,recordingDetails,snippet,statistics,status,topicDetails&id={}&key={}&hl=en",
@@ -192,41 +212,34 @@ async fn fetch_video_details(api_key: &str, video_ids: &[String]) -> Result<Vec<
 
 /// Insert the fetched video details into the database.
 fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Result<()> {
-    use nanuak_schema::youtube::videos::dsl as v;
-    use nanuak_schema::youtube::video_thumbnails::dsl as vt;
-    use nanuak_schema::youtube::video_topics::dsl as tp;
+    use youtube::video_thumbnails::dsl as vt;
+    use youtube::video_topics::dsl as tp;
+    use youtube::videos::dsl as v;
 
-    // We'll do inserts in multiple steps.
-    // First insert into `videos`.
-    // Then insert thumbnails.
-    // Then topics.
-
-    // For French practice: "Insertion des données dans la base de données."
     let new_videos: Vec<_> = items.iter().map(|item| {
-        let caption_bool = match item.contentDetails.caption.as_deref() {
+        let caption_bool = match item.content_details.caption.as_deref() {
             Some("true") => Some(true),
             Some("false") => Some(false),
             _ => None,
         };
 
-        let duration_interval = parse_iso8601_duration_to_interval(&item.contentDetails.duration);
+        let duration_interval = parse_iso8601_duration_to_interval(&item.content_details.duration);
 
         let view_count = item.statistics.as_ref()
-            .and_then(|s| s.viewCount.as_ref())
+            .and_then(|s| s.view_count.as_ref())
             .and_then(|vc| vc.parse::<i64>().ok());
         let like_count = item.statistics.as_ref()
-            .and_then(|s| s.likeCount.as_ref())
+            .and_then(|s| s.like_count.as_ref())
             .and_then(|lc| lc.parse::<i64>().ok());
         let comment_count = item.statistics.as_ref()
-            .and_then(|s| s.commentCount.as_ref())
+            .and_then(|s| s.comment_count.as_ref())
             .and_then(|cc| cc.parse::<i64>().ok());
 
         // Convert publishedAt
-        let published_at = chrono::DateTime::parse_from_rfc3339(&item.snippet.publishedAt)
+        let published_at = chrono::DateTime::parse_from_rfc3339(&item.snippet.published_at)
             .ok()
             .map(|dt| dt.with_timezone(&chrono::Utc));
 
-        // We'll rely on Diesel's `now()` for fetched_on, or we can supply chrono::Utc::now()
         let fetched_on = chrono::Utc::now().naive_utc();
 
         (
@@ -236,15 +249,15 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
             v::title.eq(&item.snippet.title),
             v::description.eq(&item.snippet.description),
             v::published_at.eq(published_at.map(|d| d.naive_utc())),
-            v::channel_id.eq(&item.snippet.channelId),
-            v::channel_title.eq(&item.snippet.channelTitle),
-            v::category_id.eq(&item.snippet.categoryId),
+            v::channel_id.eq(&item.snippet.channel_id),
+            v::channel_title.eq(&item.snippet.channel_title),
+            v::category_id.eq(&item.snippet.category_id),
             v::duration.eq(duration_interval),
             v::caption.eq(caption_bool),
-            v::definition.eq(item.contentDetails.definition.as_deref()),
-            v::dimension.eq(item.contentDetails.dimension.as_deref()),
-            v::licensed_content.eq(item.contentDetails.licensedContent),
-            v::privacy_status.eq(item.status.as_ref().map(|s| s.privacyStatus.as_str())),
+            v::definition.eq(item.content_details.definition.as_deref()),
+            v::dimension.eq(item.content_details.dimension.as_deref()),
+            v::licensed_content.eq(item.content_details.licensed_content),
+            v::privacy_status.eq(item.status.as_ref().map(|s| s.privacy_status.as_str())),
             v::tags.eq(item.snippet.tags.clone()),
             v::view_count.eq(view_count),
             v::like_count.eq(like_count),
@@ -258,9 +271,6 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
         .do_nothing()
         .execute(conn)?;
 
-    // Now we need to insert thumbnails. We'll have to re-fetch the etag we inserted.
-    // Actually, we have it in item.etag. Just insert them referencing etag.
-    // For each item, insert each available thumbnail variant.
     for item in items {
         let thumbnails = [
             ("default", &item.snippet.thumbnails.default),
@@ -287,9 +297,8 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
                 .execute(conn)?;
         }
 
-        // Insert topic categories
-        if let Some(topic_details) = &item.topicDetails {
-            let topic_inserts: Vec<_> = topic_details.topicCategories.iter().map(|tcat| (
+        if let Some(topic_details) = &item.topic_details {
+            let topic_inserts: Vec<_> = topic_details.topic_categories.iter().map(|tcat| (
                 tp::video_etag.eq(&item.etag),
                 tp::topic_url.eq(tcat),
             )).collect();
@@ -308,19 +317,22 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    let args = Args::parse();
+
+    // Adjust logging based on `--debug` flag
+    let log_level = if args.debug {
+        LevelFilter::DEBUG
+    } else {
+        LevelFilter::INFO
+    };
+
     let env_filter = EnvFilter::builder()
-        .with_default_directive(LevelFilter::INFO.into())
-        .from_env_lossy()
-        .add_directive(
-            format!("{}=debug", env!("CARGO_PKG_NAME").replace("-", "_"))
-                .parse()
-                .unwrap(),
-        );
+        .with_default_directive(log_level.into())
+        .from_env_lossy();
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
+
     color_eyre::install()?;
     info!("Ahoy!");
-
-    let args = Args::parse();
 
     let manager = ConnectionManager::<PgConnection>::new(std::env::var("DATABASE_URL")?);
     let pool = Pool::builder().build(manager)?;
@@ -330,25 +342,33 @@ async fn main() -> Result<()> {
     let api_key = std::env::var("YOUTUBE_API_KEY")?;
 
     // If single_video_id is specified, fetch just that one.
-    let video_ids = if let Some(vid) = args.single_video_id {
-        vec![vid]
-    } else {
-        // Otherwise, get next 50 videos to fetch
-        get_next_video_ids_to_fetch(&mut conn, 50)?
-    };
-
-    if video_ids.is_empty() {
-        warn!("No new video IDs to fetch.");
+    if let Some(vid) = args.single_video_id {
+        info!("Fetching single video ID: {}", vid);
+        let items = fetch_video_details(&api_key, &[vid]).await?;
+        insert_video_details(&mut conn, &items)?;
+        info!("Inserted single video detail.");
         return Ok(());
     }
 
-    info!("Fetching details for {} videos", video_ids.len());
-    let items = fetch_video_details(&api_key, &video_ids).await?;
-    info!("Fetched {} items from the API", items.len());
+    // Otherwise, fetch the next pages (each page is up to 50 videos)
+    for page in 1..=args.pages {
+        info!("Fetching page {} of {}", page, args.pages);
+        let video_ids = get_next_video_ids_to_fetch(&mut conn, 50)?;
+        if video_ids.is_empty() {
+            warn!("No new video IDs to fetch on page {}", page);
+            break;
+        }
 
-    if !items.is_empty() {
-        insert_video_details(&mut conn, &items)?;
-        info!("Inserted video details into the database.");
+        info!("Fetching details for {} videos", video_ids.len());
+        let items = fetch_video_details(&api_key, &video_ids).await?;
+        info!("Fetched {} items from the API", items.len());
+
+        if !items.is_empty() {
+            insert_video_details(&mut conn, &items)?;
+            info!("Inserted video details into the database for page {}", page);
+        } else {
+            warn!("No items returned for page {}", page);
+        }
     }
 
     Ok(())
