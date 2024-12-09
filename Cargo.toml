@@ -23,3 +23,4 @@ url = "2.5.4"
 r2d2 = "0.8.10"
 reqwest = { version = "0.12.9", features = ["json"] }
 itertools = "0.13.0"
+futures = "0.3.31"

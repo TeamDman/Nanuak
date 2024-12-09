@@ -19,3 +19,4 @@ url = { workspace = true }
 r2d2 = { workspace = true }
 reqwest = { workspace = true }
 itertools = { workspace = true }
+futures = { workspace = true }

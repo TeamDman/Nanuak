@@ -4,6 +4,7 @@ use diesel::pg::data_types::PgInterval;
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
+use futures::{stream, StreamExt, TryStreamExt};
 use itertools::Itertools;
 use nanuak_schema::youtube;
 use reqwest::Client;
@@ -12,10 +13,6 @@ use serde_json::Value;
 use tracing::{debug, error, info, warn};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
-
-/// For French practice:
-/// "Comment dire 'I want to fetch data from the database' en français ?"
-/// "Je veux récupérer des données de la base de données."
 
 #[derive(Debug, Deserialize)]
 struct YouTubeResponse {
@@ -132,14 +129,20 @@ struct Args {
     #[arg(long)]
     debug: bool,
 
-    /// How many pages of 50 videos to fetch
-    /// If not specified, defaults to 1
+    /// How many pages of videos to fetch (each page is `--page-size`)
     #[arg(long, default_value_t = 1)]
     pages: u32,
+
+    /// How many videos per page to fetch
+    #[arg(long, default_value_t = 50)]
+    page_size: usize,
+
+    /// How many pages to fetch concurrently
+    #[arg(long, default_value_t = 1)]
+    concurrency_limit: usize,
 }
 
 /// Convert an ISO8601 duration (e.g., "PT26S") to a SQL interval.
-/// For now we do something naive, or we can parse it properly.
 fn parse_iso8601_duration_to_interval(duration: &str) -> Option<PgInterval> {
     let trimmed = duration.trim_start_matches('P').trim_start_matches('T');
     let mut seconds = 0;
@@ -168,8 +171,8 @@ fn parse_iso8601_duration_to_interval(duration: &str) -> Option<PgInterval> {
     })
 }
 
-/// Fetch up to 50 video IDs that we haven't fetched details for yet.
-fn get_next_video_ids_to_fetch(conn: &mut PgConnection, limit: i64) -> color_eyre::Result<Vec<String>> {
+/// Fetch up to `count` video IDs that we haven't fetched details for yet.
+fn get_next_video_ids_to_fetch(conn: &mut PgConnection, count: i64) -> color_eyre::Result<Vec<String>> {
     use diesel::dsl::max;
     use youtube::videos::dsl as v;
     use youtube::watch_history::dsl as w;
@@ -180,7 +183,7 @@ fn get_next_video_ids_to_fetch(conn: &mut PgConnection, limit: i64) -> color_eyr
         .group_by(w::youtube_video_id)
         .order_by(max(w::time).desc())  // Order by the most recent watch time
         .select(w::youtube_video_id)
-        .limit(limit)
+        .limit(count)
         .load::<String>(conn)?;
 
     Ok(ids)
@@ -204,6 +207,7 @@ async fn fetch_video_details(api_key: &str, video_ids: &[String]) -> Result<Vec<
         return Err(eyre::eyre!("Request failed"));
     }
 
+    debug!("Response headers: {:#?}", response.headers());
     let data: Value = response.json().await?;
     debug!("Response:\n{}", serde_json::to_string_pretty(&data)?);
     let data: YouTubeResponse = serde_json::from_value(data)?;
@@ -235,11 +239,9 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
             .and_then(|s| s.comment_count.as_ref())
             .and_then(|cc| cc.parse::<i64>().ok());
 
-        // Convert publishedAt
         let published_at = chrono::DateTime::parse_from_rfc3339(&item.snippet.published_at)
             .ok()
             .map(|dt| dt.with_timezone(&chrono::Utc));
-
         let fetched_on = chrono::Utc::now().naive_utc();
 
         (
@@ -350,26 +352,47 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Otherwise, fetch the next pages (each page is up to 50 videos)
-    for page in 1..=args.pages {
-        info!("Fetching page {} of {}", page, args.pages);
-        let video_ids = get_next_video_ids_to_fetch(&mut conn, 50)?;
-        if video_ids.is_empty() {
-            warn!("No new video IDs to fetch on page {}", page);
-            break;
-        }
+    // Calculate total number of videos we want
+    let total_videos = args.pages as i64 * args.page_size as i64;
+    info!("Fetching up to {} videos ({} pages of {} each)", total_videos, args.pages, args.page_size);
 
-        info!("Fetching details for {} videos", video_ids.len());
-        let items = fetch_video_details(&api_key, &video_ids).await?;
-        info!("Fetched {} items from the API", items.len());
-
-        if !items.is_empty() {
-            insert_video_details(&mut conn, &items)?;
-            info!("Inserted video details into the database for page {}", page);
-        } else {
-            warn!("No items returned for page {}", page);
-        }
+    // Fetch all video IDs at once
+    let video_ids = get_next_video_ids_to_fetch(&mut conn, total_videos)?;
+    if video_ids.is_empty() {
+        warn!("No new video IDs to fetch.");
+        return Ok(());
     }
+
+    // Chunk into pages
+    let pages: Vec<Vec<String>> = video_ids
+        .chunks(args.page_size)
+        .map(|chunk| chunk.to_vec())
+        .collect();
+
+    info!("Got {} pages of video IDs", pages.len());
+
+    // Process pages in parallel with concurrency limit
+    // We'll use futures::stream::iter and try_for_each_concurrent
+    // Each page fetches details and inserts them
+    let pool = pool.clone(); // clone for move into async tasks
+    stream::iter(pages.into_iter().enumerate())
+        .map(Ok)
+        .try_for_each_concurrent(args.concurrency_limit, |(idx, page_ids)| {
+            let api_key = api_key.clone();
+            let pool = pool.clone();
+            async move {
+                info!("Processing page {} with {} videos", idx + 1, page_ids.len());
+                let items = fetch_video_details(&api_key, &page_ids).await?;
+                info!("Fetched {} items from the API for page {}", items.len(), idx + 1);
+                if !items.is_empty() {
+                    let mut conn = pool.get()?;
+                    insert_video_details(&mut conn, &items)?;
+                    info!("Inserted video details into the database for page {}", idx + 1);
+                }
+                Ok::<(), eyre::Error>(())
+            }
+        })
+        .await?;
 
     Ok(())
 }
