@@ -1,0 +1,1 @@
+cargo run --bin populate_videos -- --debug --page-size 1 --pages 1

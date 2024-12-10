@@ -1,17 +1,24 @@
+use std::collections::HashSet;
+
 use clap::Parser;
 use color_eyre::eyre::Result;
 use diesel::pg::data_types::PgInterval;
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
-use futures::{stream, StreamExt, TryStreamExt};
+use futures::stream;
+use futures::StreamExt;
+use futures::TryStreamExt;
 use itertools::Itertools;
 use nanuak_schema::youtube;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
-use tracing::{debug, error, info, warn};
+use tracing::debug;
+use tracing::error;
+use tracing::info;
 use tracing::level_filters::LevelFilter;
+use tracing::warn;
 use tracing_subscriber::EnvFilter;
 
 #[derive(Debug, Deserialize)]
@@ -172,16 +179,24 @@ fn parse_iso8601_duration_to_interval(duration: &str) -> Option<PgInterval> {
 }
 
 /// Fetch up to `count` video IDs that we haven't fetched details for yet.
-fn get_next_video_ids_to_fetch(conn: &mut PgConnection, count: i64) -> color_eyre::Result<Vec<String>> {
+fn get_next_video_ids_to_fetch(
+    conn: &mut PgConnection,
+    count: i64,
+) -> color_eyre::Result<Vec<String>> {
     use diesel::dsl::max;
-    use youtube::videos::dsl as v;
-    use youtube::watch_history::dsl as w;
+    use diesel::prelude::*;
+    use nanuak_schema::youtube::missing_videos as mv;
+    use nanuak_schema::youtube::videos as v;
+    use nanuak_schema::youtube::watch_history as w;
+    use nanuak_schema::youtube::{self};
 
-    let ids = w::watch_history
-        .left_join(v::videos.on(w::youtube_video_id.eq(v::video_id)))
+    let ids = w::table
+        .left_join(v::table.on(w::youtube_video_id.eq(v::video_id)))
+        // Exclude missing videos
         .filter(v::video_id.is_null())
+        .filter(w::youtube_video_id.ne_all(mv::table.select(mv::video_id)))
         .group_by(w::youtube_video_id)
-        .order_by(max(w::time).desc())  // Order by the most recent watch time
+        .order_by(max(w::time).desc())
         .select(w::youtube_video_id)
         .limit(count)
         .load::<String>(conn)?;
@@ -197,6 +212,7 @@ async fn fetch_video_details(api_key: &str, video_ids: &[String]) -> Result<Vec<
 
     let client = Client::new();
     let ids = video_ids.iter().join(",");
+    debug!("Fetching videos with IDs: {}", ids);
     let url = format!(
         "https://www.googleapis.com/youtube/v3/videos?part=contentDetails,id,recordingDetails,snippet,statistics,status,topicDetails&id={}&key={}&hl=en",
         ids, api_key
@@ -220,52 +236,62 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
     use youtube::video_topics::dsl as tp;
     use youtube::videos::dsl as v;
 
-    let new_videos: Vec<_> = items.iter().map(|item| {
-        let caption_bool = match item.content_details.caption.as_deref() {
-            Some("true") => Some(true),
-            Some("false") => Some(false),
-            _ => None,
-        };
+    let new_videos: Vec<_> = items
+        .iter()
+        .map(|item| {
+            let caption_bool = match item.content_details.caption.as_deref() {
+                Some("true") => Some(true),
+                Some("false") => Some(false),
+                _ => None,
+            };
 
-        let duration_interval = parse_iso8601_duration_to_interval(&item.content_details.duration);
+            let duration_interval =
+                parse_iso8601_duration_to_interval(&item.content_details.duration);
 
-        let view_count = item.statistics.as_ref()
-            .and_then(|s| s.view_count.as_ref())
-            .and_then(|vc| vc.parse::<i64>().ok());
-        let like_count = item.statistics.as_ref()
-            .and_then(|s| s.like_count.as_ref())
-            .and_then(|lc| lc.parse::<i64>().ok());
-        let comment_count = item.statistics.as_ref()
-            .and_then(|s| s.comment_count.as_ref())
-            .and_then(|cc| cc.parse::<i64>().ok());
+            let view_count = item
+                .statistics
+                .as_ref()
+                .and_then(|s| s.view_count.as_ref())
+                .and_then(|vc| vc.parse::<i64>().ok());
+            let like_count = item
+                .statistics
+                .as_ref()
+                .and_then(|s| s.like_count.as_ref())
+                .and_then(|lc| lc.parse::<i64>().ok());
+            let comment_count = item
+                .statistics
+                .as_ref()
+                .and_then(|s| s.comment_count.as_ref())
+                .and_then(|cc| cc.parse::<i64>().ok());
 
-        let published_at = chrono::DateTime::parse_from_rfc3339(&item.snippet.published_at)
-            .ok()
-            .map(|dt| dt.with_timezone(&chrono::Utc));
-        let fetched_on = chrono::Utc::now().naive_utc();
+            let published_at = chrono::DateTime::parse_from_rfc3339(&item.snippet.published_at)
+                .ok()
+                .map(|dt| dt.with_timezone(&chrono::Utc));
+            let fetched_on = chrono::Utc::now().naive_utc();
 
-        (
-            v::etag.eq(&item.etag),
-            v::video_id.eq(&item.id),
-            v::fetched_on.eq(fetched_on),
-            v::title.eq(&item.snippet.title),
-            v::description.eq(&item.snippet.description),
-            v::published_at.eq(published_at.map(|d| d.naive_utc())),
-            v::channel_id.eq(&item.snippet.channel_id),
-            v::channel_title.eq(&item.snippet.channel_title),
-            v::category_id.eq(&item.snippet.category_id),
-            v::duration.eq(duration_interval),
-            v::caption.eq(caption_bool),
-            v::definition.eq(item.content_details.definition.as_deref()),
-            v::dimension.eq(item.content_details.dimension.as_deref()),
-            v::licensed_content.eq(item.content_details.licensed_content),
-            v::privacy_status.eq(item.status.as_ref().map(|s| s.privacy_status.as_str())),
-            v::tags.eq(item.snippet.tags.clone()),
-            v::view_count.eq(view_count),
-            v::like_count.eq(like_count),
-            v::comment_count.eq(comment_count),
-        )
-    }).collect();
+            (
+                v::etag.eq(&item.etag),
+                v::video_id.eq(&item.id),
+                v::fetched_on.eq(fetched_on),
+                v::title.eq(&item.snippet.title),
+                v::description.eq(&item.snippet.description),
+                v::published_at.eq(published_at.map(|d| d.naive_utc())),
+                v::channel_id.eq(&item.snippet.channel_id),
+                v::channel_title.eq(&item.snippet.channel_title),
+                v::category_id.eq(&item.snippet.category_id),
+                v::duration.eq(duration_interval),
+                v::caption.eq(caption_bool),
+                v::definition.eq(item.content_details.definition.as_deref()),
+                v::dimension.eq(item.content_details.dimension.as_deref()),
+                v::licensed_content.eq(item.content_details.licensed_content),
+                v::privacy_status.eq(item.status.as_ref().map(|s| s.privacy_status.as_str())),
+                v::tags.eq(item.snippet.tags.clone()),
+                v::view_count.eq(view_count),
+                v::like_count.eq(like_count),
+                v::comment_count.eq(comment_count),
+            )
+        })
+        .collect();
 
     diesel::insert_into(v::videos)
         .values(&new_videos)
@@ -282,15 +308,20 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
             ("maxres", &item.snippet.thumbnails.maxres),
         ];
 
-        let inserts: Vec<_> = thumbnails.iter().filter_map(|(desc, opt_thumb)| {
-            opt_thumb.as_ref().map(|thumb| (
-                vt::video_etag.eq(&item.etag),
-                vt::size_description.eq(*desc),
-                vt::height.eq(thumb.height),
-                vt::width.eq(thumb.width),
-                vt::url.eq(&thumb.url),
-            ))
-        }).collect();
+        let inserts: Vec<_> = thumbnails
+            .iter()
+            .filter_map(|(desc, opt_thumb)| {
+                opt_thumb.as_ref().map(|thumb| {
+                    (
+                        vt::video_etag.eq(&item.etag),
+                        vt::size_description.eq(*desc),
+                        vt::height.eq(thumb.height),
+                        vt::width.eq(thumb.width),
+                        vt::url.eq(&thumb.url),
+                    )
+                })
+            })
+            .collect();
 
         if !inserts.is_empty() {
             diesel::insert_into(vt::video_thumbnails)
@@ -300,10 +331,11 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
         }
 
         if let Some(topic_details) = &item.topic_details {
-            let topic_inserts: Vec<_> = topic_details.topic_categories.iter().map(|tcat| (
-                tp::video_etag.eq(&item.etag),
-                tp::topic_url.eq(tcat),
-            )).collect();
+            let topic_inserts: Vec<_> = topic_details
+                .topic_categories
+                .iter()
+                .map(|tcat| (tp::video_etag.eq(&item.etag), tp::topic_url.eq(tcat)))
+                .collect();
 
             if !topic_inserts.is_empty() {
                 diesel::insert_into(tp::video_topics)
@@ -313,6 +345,24 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
             }
         }
     }
+
+    Ok(())
+}
+
+fn insert_missing_videos(conn: &mut PgConnection, missing_ids: &[String]) -> Result<()> {
+    use diesel::prelude::*;
+    use nanuak_schema::youtube::missing_videos as mv;
+    let fetched_on = chrono::Utc::now().naive_utc();
+
+    let inserts: Vec<_> = missing_ids
+        .iter()
+        .map(|video_id| (mv::video_id.eq(video_id), mv::fetched_on.eq(fetched_on)))
+        .collect();
+
+    diesel::insert_into(mv::table)
+        .values(&inserts)
+        .on_conflict_do_nothing()
+        .execute(conn)?;
 
     Ok(())
 }
@@ -354,7 +404,10 @@ async fn main() -> Result<()> {
 
     // Calculate total number of videos we want
     let total_videos = args.pages as i64 * args.page_size as i64;
-    info!("Fetching up to {} videos ({} pages of {} each)", total_videos, args.pages, args.page_size);
+    info!(
+        "Fetching up to {} videos ({} pages of {} each)",
+        total_videos, args.pages, args.page_size
+    );
 
     // Fetch all video IDs at once
     let video_ids = get_next_video_ids_to_fetch(&mut conn, total_videos)?;
@@ -383,11 +436,38 @@ async fn main() -> Result<()> {
             async move {
                 info!("Processing page {} with {} videos", idx + 1, page_ids.len());
                 let items = fetch_video_details(&api_key, &page_ids).await?;
-                info!("Fetched {} items from the API for page {}", items.len(), idx + 1);
+                info!(
+                    "Fetched {} items from the API for page {}",
+                    items.len(),
+                    idx + 1
+                );
+
+                // Determine missing videos
+                let returned_ids: HashSet<_> = items.iter().map(|i| i.id.clone()).collect();
+                let missing_ids: Vec<_> = page_ids
+                    .iter()
+                    .filter(|id| !returned_ids.contains(*id))
+                    .cloned()
+                    .collect();
+
+                if !missing_ids.is_empty() {
+                    warn!(
+                        "Detected {} unavailable videos on page {}: {:?}",
+                        missing_ids.len(),
+                        idx + 1,
+                        missing_ids
+                    );
+                    let mut conn = pool.get()?;
+                    insert_missing_videos(&mut conn, &missing_ids)?;
+                }
+
                 if !items.is_empty() {
                     let mut conn = pool.get()?;
                     insert_video_details(&mut conn, &items)?;
-                    info!("Inserted video details into the database for page {}", idx + 1);
+                    info!(
+                        "Inserted video details into the database for page {}",
+                        idx + 1
+                    );
                 }
                 Ok::<(), eyre::Error>(())
             }

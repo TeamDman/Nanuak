@@ -2,6 +2,13 @@
 
 pub mod youtube {
     diesel::table! {
+        youtube.missing_videos (video_id) {
+            video_id -> Text,
+            fetched_on -> Timestamp,
+        }
+    }
+
+    diesel::table! {
         youtube.posts (time) {
             time -> Timestamp,
             #[max_length = 8192]
@@ -85,6 +92,7 @@ pub mod youtube {
     diesel::joinable!(video_topics -> videos (video_etag));
 
     diesel::allow_tables_to_appear_in_same_query!(
+        missing_videos,
         posts,
         search_history,
         video_categories,
