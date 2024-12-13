@@ -1,5 +1,6 @@
 -- Ensure the vector extension is enabled (if not already)
-CREATE EXTENSION IF NOT EXISTS vector;
+-- CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION vector;
 
 -- Create a table for video embeddings
 -- We assume a dimension of 1024 for the embedding vector; adjust as needed.

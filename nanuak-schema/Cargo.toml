@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 diesel = { workspace = true }
+pgvector = { workspace = true }
+diesel_full_text_search = { workspace = true }

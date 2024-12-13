@@ -1,4 +1,5 @@
-use ollama_rs::{generation::embeddings::request::GenerateEmbeddingsRequest, Ollama};
+use ollama_rs::generation::embeddings::request::GenerateEmbeddingsRequest;
+use ollama_rs::Ollama;
 
 #[tokio::main]
 async fn main() {

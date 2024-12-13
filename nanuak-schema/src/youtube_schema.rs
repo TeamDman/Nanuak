@@ -1,19 +1,10 @@
 // @generated automatically by Diesel CLI.
 
 pub mod youtube {
-    pub mod sql_types {
-        #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-        #[diesel(postgres_type(name = "tsvector", schema = "pg_catalog"))]
-        pub struct Tsvector;
-
-        #[derive(diesel::query_builder::QueryId, Clone, diesel::sql_types::SqlType)]
-        #[diesel(postgres_type(name = "vector"))]
-        pub struct Vector;
-    }
-
     diesel::table! {
         use diesel::sql_types::*;
-        use super::sql_types::Vector;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
 
         youtube.channel_embeddings_bge_m3 (channel_id) {
             channel_id -> Text,
@@ -23,6 +14,10 @@ pub mod youtube {
     }
 
     diesel::table! {
+        use diesel::sql_types::*;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
+
         youtube.missing_videos (video_id) {
             video_id -> Text,
             fetched_on -> Timestamp,
@@ -30,6 +25,10 @@ pub mod youtube {
     }
 
     diesel::table! {
+        use diesel::sql_types::*;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
+
         youtube.posts (time) {
             time -> Timestamp,
             #[max_length = 8192]
@@ -42,6 +41,10 @@ pub mod youtube {
     }
 
     diesel::table! {
+        use diesel::sql_types::*;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
+
         youtube.search_history (time) {
             time -> Timestamp,
             #[max_length = 256]
@@ -50,6 +53,10 @@ pub mod youtube {
     }
 
     diesel::table! {
+        use diesel::sql_types::*;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
+
         youtube.video_categories (id) {
             id -> Text,
             title -> Text,
@@ -60,7 +67,8 @@ pub mod youtube {
 
     diesel::table! {
         use diesel::sql_types::*;
-        use super::sql_types::Vector;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
 
         youtube.video_embeddings_bge_m3 (video_etag) {
             video_etag -> Text,
@@ -70,6 +78,10 @@ pub mod youtube {
     }
 
     diesel::table! {
+        use diesel::sql_types::*;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
+
         youtube.video_thumbnails (id) {
             id -> Int4,
             video_etag -> Nullable<Text>,
@@ -81,6 +93,10 @@ pub mod youtube {
     }
 
     diesel::table! {
+        use diesel::sql_types::*;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
+
         youtube.video_topics (id) {
             id -> Int4,
             video_etag -> Nullable<Text>,
@@ -90,7 +106,8 @@ pub mod youtube {
 
     diesel::table! {
         use diesel::sql_types::*;
-        use super::sql_types::Tsvector;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
 
         youtube.videos (etag) {
             etag -> Text,
@@ -117,6 +134,10 @@ pub mod youtube {
     }
 
     diesel::table! {
+        use diesel::sql_types::*;
+        use pgvector::sql_types::*;
+        use diesel_full_text_search::Tsvector;
+
         youtube.watch_history (time) {
             time -> Timestamp,
             #[max_length = 16]
