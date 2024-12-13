@@ -78,3 +78,41 @@ pub fn load_videos_needing_embeddings(
 
     sql_query(sql).load::<VideoWithLatestWatch>(conn)
 }
+
+/// Count how many videos still need embeddings
+pub fn count_videos_needing_embeddings(conn: &mut PgConnection) -> QueryResult<i64> {
+    // Similar logic as load_videos_needing_embeddings but just counting
+    // We'll reuse the window function approach from before:
+    //
+    // SELECT count(*) FROM (
+    //    SELECT v.etag,
+    //           RANK() OVER (PARTITION BY v.etag ORDER BY w.time DESC) AS rnk
+    //    FROM youtube.videos v
+    //    JOIN youtube.watch_history w ON w.youtube_video_id = v.video_id
+    //    WHERE v.etag NOT IN (SELECT video_etag FROM youtube.video_embeddings_bge_m3)
+    // ) AS sub
+    // WHERE rnk = 1;
+    use diesel::sql_types::BigInt;
+    let sql = r#"
+        SELECT COUNT(*) as count
+        FROM (
+            SELECT v.etag,
+                   RANK() OVER (PARTITION BY v.etag ORDER BY w.time DESC) AS rnk
+            FROM youtube.videos v
+            JOIN youtube.watch_history w ON w.youtube_video_id = v.video_id
+            WHERE v.etag NOT IN (
+                SELECT video_etag FROM youtube.video_embeddings_bge_m3
+            )
+        ) AS sub
+        WHERE rnk = 1
+    "#;
+
+    #[derive(QueryableByName)]
+    struct CountRow {
+        #[diesel(sql_type = BigInt)]
+        count: i64,
+    }
+
+    let row = diesel::sql_query(sql).get_result::<CountRow>(conn)?;
+    Ok(row.count)
+}

@@ -1,0 +1,1 @@
+cargo run --bin search_video_embeddings

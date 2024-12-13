@@ -6,6 +6,7 @@ use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use itertools::Itertools;
 use nanuak_schema::youtube::video_embeddings_bge_m3;
+use nanuak_youtube_embeddings::count_videos_needing_embeddings;
 use nanuak_youtube_embeddings::{load_videos_needing_embeddings, VideoWithLatestWatch};
 use ollama_rs::generation::embeddings::request::GenerateEmbeddingsRequest;
 use ollama_rs::Ollama;
@@ -21,9 +22,9 @@ struct Args {
     #[arg(long)]
     debug: bool,
 
-    /// How many batches to process
-    #[arg(long, default_value_t = 1)]
-    batches: usize,
+    /// How many batches to process. If not provided, run until no more videos remain.
+    #[arg(long)]
+    batches: Option<usize>,
 
     /// How many videos per batch to embed
     #[arg(long, default_value_t = 20)]
@@ -36,13 +37,9 @@ struct Args {
 
 /// Build a string representation of the video for embedding
 fn build_video_string(video: &VideoWithLatestWatch) -> String {
-    // Safely unwrap optionals or provide placeholders
     let title = video.title.as_deref().unwrap_or("Unknown Title");
     let channel = video.channel_title.as_deref().unwrap_or("Unknown Channel");
-    let category = video
-        .category_title
-        .as_deref()
-        .unwrap_or("Unknown Category");
+    let category = video.category_title.as_deref().unwrap_or("Unknown Category");
     let description = video.description.as_deref().unwrap_or("No Description");
     let tags = video
         .tags
@@ -124,19 +121,46 @@ async fn main() -> Result<()> {
     let ollama = Ollama::default();
     let mut conn = pool.get()?;
 
+    // Count how many videos are remaining at the start
+    let mut remaining = count_videos_needing_embeddings(&mut conn)?;
+    if remaining == 0 {
+        info!("No videos need embeddings. Exiting.");
+        return Ok(());
+    }
+
+    info!("{} videos remain to be embedded.", remaining);
+
     let mut current_batch_size = args.batch_size;
     let mut best_batch_size = current_batch_size;
-    let mut best_throughput = 0.0; // items/second
-    let mut last_improved = true; // whether we improved last time
-    let mut increment = 50; // how much we increase or decrease batch size by
+    let mut best_throughput = 0.0;
+    let mut last_improved = true;
+    let mut increment = 50;
 
-    for batch_idx in 0..args.batches {
+    // Determine how many batches we run:
+    // If batches is None, run until no more videos remain.
+    let total_batches = args.batches.unwrap_or(usize::MAX);
+    let total_batches_str = if total_batches == usize::MAX {
+        "-∞-".to_string()
+    } else {
+        total_batches.to_string()
+    };
+
+    let mut batch_count = 0;
+
+    while batch_count < total_batches {
+        if remaining == 0 {
+            info!("No more videos to embed.");
+            break;
+        }
+
         info!(
-            "Fetching next batch of videos (batch {}/{}) with batch_size={}",
-            batch_idx + 1,
-            args.batches,
-            current_batch_size
+            "Fetching next batch of videos (batch {}/{}) with batch_size={} ({} remain)",
+            batch_count + 1,
+            total_batches_str,
+            current_batch_size,
+            remaining
         );
+
         let videos = load_videos_needing_embeddings(&mut conn, current_batch_size as i64)?;
         if videos.is_empty() {
             info!("No more videos to embed.");
@@ -159,7 +183,7 @@ async fn main() -> Result<()> {
                 videos.len(),
                 response.embeddings.len()
             );
-            continue;
+            // We'll continue, but this batch might be messed up
         }
 
         // Insert embeddings
@@ -167,38 +191,46 @@ async fn main() -> Result<()> {
         insert_embeddings(&mut conn, &etags, &response.embeddings)?;
         info!("Inserted embeddings for {} videos.", etags.len());
 
-        // Throughput calculation
+        // Update counts
+        let processed = etags.len();
         let seconds = elapsed.as_secs_f64();
-        let throughput = videos.len() as f64 / seconds;
+        let throughput = processed as f64 / seconds;
+        batch_count += 1;
+
+        // Recount how many remain
+        remaining = count_videos_needing_embeddings(&mut conn)?;
         info!(
-            "Batch {}: Processed {} videos in {:.2}s => {:.2} vids/s",
-            batch_idx + 1,
-            videos.len(),
-            seconds,
-            throughput
+            "Batch {}: Processed {} videos in {:.2}s => {:.2} vids/s. {} remain.",
+            batch_count, processed, seconds, throughput, remaining
         );
 
+        if throughput > 0.0 && remaining > 0 {
+            let eta_sec = remaining as f64 / throughput;
+            let eta_min = eta_sec / 60.0;
+            info!("ETA: {:.2}s (~{:.1}m) at current throughput.", eta_sec, eta_min);
+        }
+
         // If optimize is set, attempt to adjust batch size based on throughput
-        if args.optimize && batch_idx + 1 < args.batches {
+        if args.optimize && batch_count < total_batches && processed > 0 {
             if throughput > best_throughput {
                 best_throughput = throughput;
                 best_batch_size = current_batch_size;
-                // Try going bigger, maybe it helps
                 current_batch_size = (current_batch_size + increment).min(1000);
                 last_improved = true;
             } else {
-                // we got worse, revert to best or try smaller
                 if last_improved {
-                    // We just improved last time, now we got worse
-                    // revert to best and try smaller increments
                     current_batch_size = (current_batch_size - increment).max(10);
                     last_improved = false;
                 } else {
-                    // we got worse again, try reducing increment
                     increment = (increment / 2).max(10);
                     current_batch_size = best_batch_size;
                 }
             }
+        }
+
+        if remaining == 0 {
+            info!("All videos embedded!");
+            break;
         }
     }
 
