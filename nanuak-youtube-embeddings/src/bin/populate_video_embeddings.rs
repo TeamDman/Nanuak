@@ -6,13 +6,11 @@ use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use itertools::Itertools;
 use nanuak_schema::youtube::video_embeddings_bge_m3;
-use nanuak_youtube_embeddings::load_videos_needing_embeddings;
-use nanuak_youtube_embeddings::VideoWithLatestWatch;
+use nanuak_youtube_embeddings::{load_videos_needing_embeddings, VideoWithLatestWatch};
 use ollama_rs::generation::embeddings::request::GenerateEmbeddingsRequest;
 use ollama_rs::Ollama;
-use tracing::debug;
-use tracing::error;
-use tracing::info;
+use std::time::Instant;
+use tracing::{debug, error, info};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
@@ -30,6 +28,10 @@ struct Args {
     /// How many videos per batch to embed
     #[arg(long, default_value_t = 20)]
     batch_size: usize,
+
+    /// If set, try to optimize batch size for best throughput
+    #[arg(long)]
+    optimize: bool,
 }
 
 /// Build a string representation of the video for embedding
@@ -71,17 +73,6 @@ fn insert_embeddings(
 ) -> Result<()> {
     use video_embeddings_bge_m3::dsl as vemb;
     let now = Utc::now().naive_utc();
-
-    // We'll insert rows. `video_etag` and `embedding` should match up.
-    // embedding is a vector(1024). `diesel` doesn't have built-in pgvector support by default,
-    // so you must have pgvector support via a custom type or raw SQL inserts.
-    // If you have pgvector configured and integrated with Diesel (like `diesel-pgvector` crate),
-    // you can just insert it as a normal field. If not, you may need a custom SQL for insertion.
-    //
-    // Let's assume you have `pgvector` properly integrated and can insert a `Vec<f32>` directly.
-    // If not, you must handle it as a raw SQL. For the sake of this example, we assume you have a custom SQL type for vector.
-    //
-    // We'll create a temporary Insertable struct:
 
     #[derive(Insertable)]
     #[diesel(table_name = video_embeddings_bge_m3)]
@@ -133,13 +124,20 @@ async fn main() -> Result<()> {
     let ollama = Ollama::default();
     let mut conn = pool.get()?;
 
+    let mut current_batch_size = args.batch_size;
+    let mut best_batch_size = current_batch_size;
+    let mut best_throughput = 0.0; // items/second
+    let mut last_improved = true; // whether we improved last time
+    let mut increment = 50; // how much we increase or decrease batch size by
+
     for batch_idx in 0..args.batches {
         info!(
-            "Fetching next batch of videos (batch {}/{})",
+            "Fetching next batch of videos (batch {}/{}) with batch_size={}",
             batch_idx + 1,
-            args.batches
+            args.batches,
+            current_batch_size
         );
-        let videos = load_videos_needing_embeddings(&mut conn, args.batch_size as i64)?;
+        let videos = load_videos_needing_embeddings(&mut conn, current_batch_size as i64)?;
         if videos.is_empty() {
             info!("No more videos to embed.");
             break;
@@ -151,8 +149,10 @@ async fn main() -> Result<()> {
 
         // Call Ollama embeddings
         info!("Calling Ollama to embed {} videos...", texts.len());
+        let start = Instant::now();
         let request = GenerateEmbeddingsRequest::new("bge-m3:latest".to_string(), texts.into());
         let response = ollama.generate_embeddings(request).await?;
+        let elapsed = start.elapsed();
         if response.embeddings.len() != videos.len() {
             error!(
                 "Mismatch in embeddings count. Expected {} got {}",
@@ -166,7 +166,46 @@ async fn main() -> Result<()> {
         let etags: Vec<String> = videos.iter().map(|v| v.etag.clone()).collect();
         insert_embeddings(&mut conn, &etags, &response.embeddings)?;
         info!("Inserted embeddings for {} videos.", etags.len());
+
+        // Throughput calculation
+        let seconds = elapsed.as_secs_f64();
+        let throughput = videos.len() as f64 / seconds;
+        info!(
+            "Batch {}: Processed {} videos in {:.2}s => {:.2} vids/s",
+            batch_idx + 1,
+            videos.len(),
+            seconds,
+            throughput
+        );
+
+        // If optimize is set, attempt to adjust batch size based on throughput
+        if args.optimize && batch_idx + 1 < args.batches {
+            if throughput > best_throughput {
+                best_throughput = throughput;
+                best_batch_size = current_batch_size;
+                // Try going bigger, maybe it helps
+                current_batch_size = (current_batch_size + increment).min(1000);
+                last_improved = true;
+            } else {
+                // we got worse, revert to best or try smaller
+                if last_improved {
+                    // We just improved last time, now we got worse
+                    // revert to best and try smaller increments
+                    current_batch_size = (current_batch_size - increment).max(10);
+                    last_improved = false;
+                } else {
+                    // we got worse again, try reducing increment
+                    increment = (increment / 2).max(10);
+                    current_batch_size = best_batch_size;
+                }
+            }
+        }
     }
+
+    info!(
+        "Finished. Best throughput was {:.2} vids/s at batch size {}",
+        best_throughput, best_batch_size
+    );
 
     Ok(())
 }
