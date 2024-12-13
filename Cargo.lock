@@ -1061,6 +1061,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "simsimd",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -1612,6 +1613,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9e9e0b4211b72e7b8b6e85c807d36c212bdb33ea8587f7569562a84df5465b1"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "simsimd"
+version = "6.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb18072bc601c31152841c2a114b78c11fe15513f0767eacd57d68359b7130e3"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

@@ -23,3 +23,4 @@ futures = { workspace = true }
 ollama-rs = { workspace = true }
 pgvector = { workspace = true }
 diesel_full_text_search = { workspace = true }
+simsimd = { workspace = true }

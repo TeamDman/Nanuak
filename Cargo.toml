@@ -28,3 +28,4 @@ futures = "0.3.31"
 ollama-rs = "0.2.1"
 pgvector = { version = "0.4.0", features = ["diesel"] }
 diesel_full_text_search = "2.2.0"
+simsimd = "6.2.1"
