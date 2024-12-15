@@ -7,6 +7,9 @@ members = [
     "nanuak-youtube-populate-details",
     "nanuak-youtube-embeddings",
 ]
+exclude = [
+    "nanuak-ui"
+]
 
 [workspace.dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
