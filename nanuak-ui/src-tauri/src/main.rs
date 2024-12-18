@@ -4,12 +4,25 @@
     windows_subsystem = "windows"
 )]
 
+use diesel::pg::PgConnection;
+use diesel::prelude::*;
+use diesel::r2d2::ConnectionManager;
+use diesel::r2d2::Pool;
 use serde::Deserialize;
 use serde::Serialize;
 use specta::Type;
 use specta_typescript::Typescript;
+use std::sync::LazyLock;
 use tauri_specta::collect_commands;
 use tauri_specta::collect_events;
+
+static DB_POOL: LazyLock<Pool<ConnectionManager<PgConnection>>> = LazyLock::new(|| {
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
+    Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool")
+});
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -27,32 +40,83 @@ pub struct Video {
     views: u32,
 }
 
+// Struct to receive query results
+#[derive(QueryableByName)]
+#[allow(dead_code)]
+struct DbVideo {
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    video_id: String,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    title: String,
+    #[diesel(sql_type = diesel::sql_types::Int4)]
+    dur_seconds: i32,
+    #[diesel(sql_type = diesel::sql_types::Int8)]
+    view_count: i64,
+    #[diesel(sql_type = diesel::sql_types::Text)]
+    thumbnail: String,
+}
+
 #[tauri::command]
 #[specta::specta]
-fn fetch_videos() -> Vec<Video> {
-    vec![
-        Video {
-            id: "1".to_owned(),
-            title: "Building a Modern Web Application".to_owned(),
-            thumbnail: "https://picsum.photos/seed/1/640/360".to_owned(),
-            duration: 1845,
-            views: 15420,
-        },
-        Video {
-            id: "2".to_owned(),
-            title: "Advanced Database Concepts".to_owned(),
-            thumbnail: "https://picsum.photos/seed/2/640/360".to_owned(),
-            duration: 2250,
-            views: 8750,
-        },
-        Video {
-            id: "3".to_owned(),
-            title: "Understanding Kubernetes".to_owned(),
-            thumbnail: "https://picsum.photos/seed/3/640/360".to_owned(),
-            duration: 3600,
-            views: 12300,
-        },
-    ]
+fn fetch_videos(search: Option<String>) -> Result<Vec<Video>, String> {
+    log::info!("Fetching using query {search:?}");
+    use diesel::prelude::*;
+    use diesel_full_text_search::plainto_tsquery;
+    use diesel_full_text_search::TsVectorExtensions;
+    use nanuak_schema::youtube::video_thumbnails;
+    use nanuak_schema::youtube::videos;
+
+    let mut conn = DB_POOL.get().map_err(|e| e.to_string())?;
+    // Start building the query
+    let mut query = videos::table
+        .left_join(
+            video_thumbnails::table.on(video_thumbnails::video_etag.eq(videos::etag.nullable()).and(video_thumbnails::size_description.eq("maxres"))),
+        )
+        .select((
+            videos::video_id,
+            videos::title,
+            videos::duration,
+            videos::view_count,
+            video_thumbnails::url.nullable(),
+        ))
+        .into_boxed();
+
+    // If the user provided a search string, apply full-text search
+    if let Some(ref q) = search {
+        if !q.is_empty() {
+            query = query.filter(
+                // videos::search_document.matches(sql("'english'::regconfig'"), plainto_tsquery(q)),
+                videos::search_document.matches(plainto_tsquery(q)),
+            );
+        }
+    }
+
+    // Limit the number of results
+    let results = query
+        .limit(50)
+        .load::<(
+            String,
+            String,
+            chrono::Duration,
+            Option<i64>,
+            Option<String>,
+        )>(&mut conn)
+        .map_err(|e| e.to_string())?;
+
+    // Convert DB rows into the frontend `Video` struct
+    let videos = results
+        .into_iter()
+        .map(|(vid, title, dur, views, thumb)| Video {
+            id: vid,
+            title,
+            thumbnail: thumb
+                .unwrap_or_else(|| "https://picsum.photos/seed/default/640/360".to_owned()),
+            duration: dur.num_seconds() as u32,
+            views: views.unwrap_or(0) as u32,
+        })
+        .collect();
+
+    Ok(videos)
 }
 
 fn main() {
@@ -67,6 +131,7 @@ fn main() {
 
     // tauri_specta::Builder::<tauri::Wry>::new()
     tauri::Builder::default()
+        .plugin(tauri_plugin_log::Builder::new().build())
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app| {
             specta_builder.mount_events(app);

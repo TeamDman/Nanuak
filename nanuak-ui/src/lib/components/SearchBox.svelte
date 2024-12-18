@@ -1,5 +1,5 @@
-<script>
-  export let onSearch = (query) => {};
+<script lang="ts">
+  export let onSearch = (_query: string) => {};
   let searchQuery = '';
 
   const handleSearch = () => {

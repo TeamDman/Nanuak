@@ -8,8 +8,13 @@ export const commands = {
 async greet(name: string) : Promise<string> {
     return await TAURI_INVOKE("greet", { name });
 },
-async fetchVideos() : Promise<Video[]> {
-    return await TAURI_INVOKE("fetch_videos");
+async fetchVideos(search: string | null) : Promise<Result<Video[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("fetch_videos", { search }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 

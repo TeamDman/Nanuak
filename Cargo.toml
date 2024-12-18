@@ -6,10 +6,11 @@ members = [
     "nanuak-youtube-takeout-ingest",
     "nanuak-youtube-populate-details",
     "nanuak-youtube-embeddings",
+    "nanuak-ui/src-tauri",
 ]
-exclude = [
-    "nanuak-ui"
-]
+# exclude = [
+#     "nanuak-ui"
+# ]
 
 [workspace.dependencies]
 chrono = { version = "0.4.38", features = ["serde"] }
@@ -32,3 +33,12 @@ ollama-rs = "0.2.1"
 pgvector = { version = "0.4.0", features = ["diesel"] }
 diesel_full_text_search = "2.2.0"
 simsimd = "6.2.1"
+
+# Optimized for bundle size. If you want faster builds comment out/delete this section.
+[profile.release]
+lto = true        # Enable Link Time Optimization
+opt-level = "z"   # Optimize for size.
+codegen-units = 1 # Reduce number of codegen units to increase optimizations.
+panic = "abort"   # Abort on panic
+strip = true      # Automatically strip symbols from the binary.
+debug = false

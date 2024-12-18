@@ -2,26 +2,27 @@
   import { onMount } from 'svelte';
   import SearchBox from '$components/SearchBox.svelte';
   import ThumbnailGrid from '$components/ThumbnailGrid.svelte';
-  import { commands } from '$lib/bindings'; // Custom API for data fetching
-  import type { Video } from '$lib/bindings'; // Custom type for video data
+  import { commands } from '$lib/bindings';
+  import type { Video } from '$lib/bindings';
+
   let videos: Video[] = [];
   let filteredVideos: Video[] = [];
 
-  const fetchData = async () => {
-    // Replace with your Tauri backend call
-    // const data = await invoke('fetch_videos');
-    const data = await commands.fetchVideos();
-    videos = data;
-    filteredVideos = data;
+  const fetchData = async (query: string = '') => {
+    const data = await commands.fetchVideos(query);
+    if (data.status === 'ok') {
+      videos = data.data;
+      filteredVideos = data.data;
+    } else {
+      console.error(data.error);
+    }
   };
 
-  const handleSearch = (query: string) => {
-    filteredVideos = videos.filter((video) =>
-      video.title.toLowerCase().includes(query.toLowerCase())
-    );
+  const handleSearch = async (query: string) => {
+    await fetchData(query);
   };
 
-  onMount(fetchData);
+  onMount(() => fetchData());
 </script>
 
 <div class="min-h-screen bg-gray-50 py-8">

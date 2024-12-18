@@ -26,6 +26,7 @@
   "dependencies": {
     "@tanstack/svelte-table": "^8.9.4",
     "@tauri-apps/api": "2.0.3",
+    "@tauri-apps/plugin-log": "~2.2.0",
     "@tauri-apps/plugin-window": "2.0.0-alpha.0",
     "@tauri-controls/svelte": "^0.1.0",
     "class-variance-authority": "^0.7.0",

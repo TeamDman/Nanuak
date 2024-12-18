@@ -11,6 +11,9 @@ dependencies:
   '@tauri-apps/api':
     specifier: 2.0.3
     version: 2.0.3
+  '@tauri-apps/plugin-log':
+    specifier: ~2.2.0
+    version: 2.2.0
   '@tauri-apps/plugin-window':
     specifier: 2.0.0-alpha.0
     version: 2.0.0-alpha.0
@@ -958,6 +961,12 @@ packages:
       '@tauri-apps/cli-win32-x64-msvc': 2.1.0
     dev: true
 
+  /@tauri-apps/plugin-log@2.2.0:
+    resolution: {integrity: sha512-g6CsQAR1lsm5ABSZZxpM/iCn86GrMDTTlhj7GPkZkYBRSm3+WczfOAl7SV7HDn77tOKCzhZffwI5uHfRoHutrw==}
+    dependencies:
+      '@tauri-apps/api': 2.0.3
+    dev: false
+
   /@tauri-apps/plugin-os@2.0.0-alpha.0:
     resolution: {integrity: sha512-vHZW/W/5bAvr1UnaXhRg29yDQUkBuCGlxtVDKUEUTvKEdbMrKLlFuzr8RxcczLI9CTDqQ/EP7xzn7XYYQWR82Q==}
     dependencies:
@@ -1333,7 +1342,7 @@ packages:
       postcss: ^8.1.0
     dependencies:
       browserslist: 4.21.9
-      caniuse-lite: 1.0.30001517
+      caniuse-lite: 1.0.30001689
       fraction.js: 4.2.0
       normalize-range: 0.1.2
       picocolors: 1.0.0
@@ -1378,7 +1387,7 @@ packages:
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
     dependencies:
-      caniuse-lite: 1.0.30001517
+      caniuse-lite: 1.0.30001689
       electron-to-chromium: 1.4.477
       node-releases: 2.0.13
       update-browserslist-db: 1.0.11(browserslist@4.21.9)
@@ -1414,8 +1423,8 @@ packages:
     engines: {node: '>= 6'}
     dev: true
 
-  /caniuse-lite@1.0.30001517:
-    resolution: {integrity: sha512-Vdhm5S11DaFVLlyiKu4hiUTkpZu+y1KA/rZZqVQfOD5YdDT/eQKlkt7NaE0WGOFgX32diqt9MiP9CAiFeRklaA==}
+  /caniuse-lite@1.0.30001689:
+    resolution: {integrity: sha512-CmeR2VBycfa+5/jOfnp/NpWPGd06nf1XYiefUvhXFfZE4GkRc9jv+eGPS4nT558WS/8lYCzV8SlANCIPvbWP1g==}
     dev: true
 
   /canvas-confetti@1.6.0:
