@@ -31,7 +31,9 @@ pgvector = { workspace = true }
 diesel_full_text_search = { workspace = true }
 nanuak-schema = { workspace = true }
 chrono = { workspace = true }
-
+ollama-rs = { workspace = true }
+eyre = { workspace = true }
+color-eyre = { workspace = true }
 
 [features]
 # by default Tauri runs in production mode

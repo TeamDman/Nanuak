@@ -1,10 +1,20 @@
 <script lang="ts">
-  export let onSearch = (_query: string) => {};
+  export let onSearch: (query: string) => void;
   let searchQuery = '';
+  let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  const handleSearch = () => {
-    onSearch(searchQuery);
-  };
+  function handleInput(e: Event) {
+    const target = e.target as HTMLInputElement;
+    searchQuery = target.value;
+
+    // Clear any existing timeout
+    if (typingTimeout) clearTimeout(typingTimeout);
+
+    // Set a new timeout to trigger onSearch after 100ms of no input
+    typingTimeout = setTimeout(() => {
+      onSearch(searchQuery);
+    }, 300);
+  }
 </script>
 
 <div class="relative">
@@ -12,7 +22,7 @@
     bind:value={searchQuery}
     placeholder="Search your watch history..."
     class="pl-10 h-10 w-full rounded-lg border border-gray-300 shadow-sm focus:ring focus:ring-blue-300 focus:outline-none"
-    on:keypress={(e) => e.key === 'Enter' && handleSearch()}
+    on:input={handleInput}
   />
   <svg
     class="absolute left-3 top-2.5 h-5 w-5 text-gray-400"

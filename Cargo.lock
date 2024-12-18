@@ -2383,10 +2383,13 @@ name = "nanuak-ui"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "color-eyre",
  "diesel",
  "diesel_full_text_search",
+ "eyre",
  "log",
  "nanuak-schema",
+ "ollama-rs",
  "pgvector",
  "serde",
  "serde_json",

@@ -3,4 +3,4 @@ db_backup.sql
 .svelte-kit
 node_modules
 build
-nanuak-prompting
+nanuak-prompting/prompt.md
