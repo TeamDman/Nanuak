@@ -6,6 +6,10 @@
 
   const links = [
     {
+      name: 'Home',
+      href: '/'
+    },
+    {
       name: 'Bruh',
       href: '/bruh'
     }
