@@ -1,0 +1,32 @@
+[project]
+name = "image-embedding-experiments"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "asyncpg>=0.30.0",
+    "fastapi[standard]>=0.115.6",
+    "ipywidgets>=8.1.5",
+    "matplotlib>=3.10.0",
+    "python-dotenv>=1.0.1",
+    "sentencepiece>=0.2.0",
+    "torch>=2.5.1",
+    "torchaudio>=2.5.1",
+    "torchvision>=0.20.1",
+    "transformers>=4.47.1",
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch" }
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu124"
+# torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+explicit = true
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+]

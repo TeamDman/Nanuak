@@ -4,3 +4,6 @@ db_backup.sql
 node_modules
 build
 nanuak-prompting/prompt.md
+.venv
+__pycache__
+.ipynb_checkpoints

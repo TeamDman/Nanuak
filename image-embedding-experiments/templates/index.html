@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nanuak Captioning</title>
+  <!-- Tailwind CSS via CDN (dark theme is custom) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* We'll do a dark, glassy style. Using some custom classes with backdrops, etc. */
+    body {
+      background: #1c1e21; /* Very dark grey */
+      color: #f3f3f3;
+      font-family: sans-serif;
+      margin: 0; padding: 0;
+    }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+    }
+    .gradient-button {
+      background: linear-gradient(to right, #3b82f6, #9333ea);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+    }
+    .gradient-button:hover {
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4">
+  <div class="w-full max-w-3xl glass-panel p-6 mt-4">
+    <h1 class="text-3xl mb-4 font-bold">Nanuak Captioning (Dark/Glassy)</h1>
+
+    <!-- SEARCH AREA -->
+    <form action="/search" method="get" class="mb-4 flex space-x-2">
+      <input
+        type="text"
+        name="q"
+        placeholder="Search by text..."
+        class="flex-1 px-3 py-2 rounded text-black"
+        value="{{ search_query if search_query else '' }}"
+      />
+      <button type="submit" class="gradient-button">Search</button>
+    </form>
+
+    <!-- IMAGE UPLOAD & TEXT INPUT -->
+    <form action="/upload_image" method="post" enctype="multipart/form-data" class="mb-4 flex flex-col space-y-2">
+      <label class="block">Upload an image:</label>
+      <input type="file" name="file" accept="image/*" class="text-sm" />
+      <label class="block">Optional text query:</label>
+      <input type="text" name="text_query" placeholder="Optional text" class="px-3 py-2 rounded text-black" />
+      <button type="submit" class="gradient-button w-fit">Submit</button>
+    </form>
+
+    <!-- RESULTS AREA -->
+    <div class="mt-4">
+      <h2 class="text-xl mb-2">Latest or Searched Captions</h2>
+      <div class="space-y-4">
+        {% for item in results %}
+          <div class="bg-gray-800 bg-opacity-50 p-4 rounded">
+            <div class="font-semibold">Request ID: {{ item.request_id }}</div>
+            {% if item.image_path %}
+              <img src="{{ item.image_path | safe }}" alt="uploaded" class="max-h-48 mt-2" />
+            {% endif %}
+            <div class="mt-2 italic">
+              {{ item.caption_text if item.caption_text else "No caption yet..." }}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</body>
+</html>
