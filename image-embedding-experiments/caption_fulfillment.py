@@ -14,6 +14,7 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 
 
 async def main():
+    print("Starting Caption Fulfillment & Logger service...")
     load_dotenv()
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
