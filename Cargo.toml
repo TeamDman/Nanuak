@@ -7,7 +7,7 @@ members = [
     "nanuak-youtube-populate-details",
     "nanuak-youtube-embeddings",
     "nanuak-ui/src-tauri",
-    "nanuak-files-index-request",
+    "nanuak-files-index-request", "nanuak-prompting",
 ]
 
 [workspace.dependencies]
@@ -32,6 +32,8 @@ pgvector = { version = "0.4.0", features = ["diesel"] }
 diesel_full_text_search = "2.2.0"
 simsimd = "6.2.1"
 sha2 = "0.10.8"
+ignore = "0.4.23"
+indexmap = "2.7.0"
 
 # Optimized for bundle size. If you want faster builds comment out/delete this section.
 [profile.release]
