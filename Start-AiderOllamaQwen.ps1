@@ -1,0 +1,1 @@
+aider --model ollama_chat/qwen2.5:iq4
