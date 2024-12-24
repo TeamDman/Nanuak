@@ -1,5 +1,0 @@
--- Drop image_embeddings schema
-DROP SCHEMA IF EXISTS image_embeddings CASCADE;
-
--- Drop captions schema
-DROP SCHEMA IF EXISTS captions CASCADE;
