@@ -1,0 +1,1 @@
+cargo run -- ..\image-embedding-experiments\images\ali-hadadi-kia-CB2B56hweCU-unsplash.jpg

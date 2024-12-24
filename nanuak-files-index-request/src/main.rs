@@ -1,11 +1,12 @@
 use clap::Parser;
+use diesel::dsl::now;
+use diesel::insert_into;
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
-use diesel::sql_query;
-use diesel::sql_types::BigInt;
-use diesel::sql_types::Int4;
-use diesel::sql_types::Text;
+use diesel::upsert::excluded;
+use nanuak_schema::files_models::NewFile;
+use nanuak_schema::files_models::NewRequest;
 use sha2::Digest;
 use sha2::Sha256;
 use std::fs::File;
@@ -22,16 +23,22 @@ struct Args {
     file_path: PathBuf,
 
     /// Whether to request an embedding
-    #[arg(long)]
-    request_embedding: bool,
+    #[arg(long, default_value = "true")]
+    embed: bool,
 
     /// Whether to request a caption
-    #[arg(long)]
-    request_caption: bool,
+    #[arg(long, default_value = "true")]
+    caption: bool,
 
-    /// The model to request for embedding/caption (if relevant)
-    #[arg(long, default_value = "clip-vit-base-patch32")]
-    model: String,
+    /// The model to request for embedding (if relevant)
+    #[arg(long, default_value = "openai/clip-vit-base-patch32")]
+    embedding_model: String,
+
+    /// The model to request for caption (if relevant)
+    #[arg(long, default_value = "Salesforce/blip-image-captioning-large")]
+    captioning_model: String,
+
+
 }
 
 fn main() -> eyre::Result<()> {
@@ -65,33 +72,37 @@ fn main() -> eyre::Result<()> {
     let file_path_str = args.file_path.to_string_lossy().to_string();
 
     // Perform the INSERT ... RETURNING id query
-    let inserted_file: models::InsertedFile = sql_query(
-        r#"
-        INSERT INTO files.files (path, file_size, hash_value, hash_algorithm)
-        VALUES ($1, $2, $3, $4)
-        ON CONFLICT (path) DO UPDATE
-            SET file_size = EXCLUDED.file_size,
-                hash_value = EXCLUDED.hash_value,
-                hash_algorithm = EXCLUDED.hash_algorithm,
-                seen_at = CURRENT_TIMESTAMP
-        RETURNING id
-        "#,
-    )
-    .bind::<Text, _>(&file_path_str)
-    .bind::<BigInt, _>(file_size)
-    .bind::<Text, _>(&hash_value)
-    .bind::<Text, _>(hash_algo)
-    .get_result(&mut conn)?;
+    let new_file = NewFile {
+        path: &file_path_str,
+        file_size,
+        hash_value: &hash_value,
+        hash_algorithm: &hash_algo,
+    };
 
-    let file_id = inserted_file.id;
+    use nanuak_schema::files::files::dsl as files_dsl;
+
+    let inserted_file: i32 = insert_into(files_dsl::files)
+        .values(&new_file)
+        .on_conflict(files_dsl::path)
+        .do_update()
+        .set((
+            files_dsl::file_size.eq(excluded(files_dsl::file_size)),
+            files_dsl::hash_value.eq(excluded(files_dsl::hash_value)),
+            files_dsl::hash_algorithm.eq(excluded(files_dsl::hash_algorithm)),
+            files_dsl::seen_at.eq(now),
+        ))
+        .returning(files_dsl::id)
+        .get_result(&mut conn)?;
+
+    let file_id = inserted_file;
     println!("File record ID = {}", file_id);
 
     // 3) Optionally create requests
-    if args.request_embedding {
-        insert_request_if_needed(&mut conn, file_id, "embed", &args.model)?;
+    if args.embed {
+        insert_request_if_needed(&mut conn, file_id, "embed", &args.embedding_model)?;
     }
-    if args.request_caption {
-        insert_request_if_needed(&mut conn, file_id, "caption", &args.model)?;
+    if args.caption {
+        insert_request_if_needed(&mut conn, file_id, "caption", &args.captioning_model)?;
     }
 
     println!("Requests created (if needed).");
@@ -100,77 +111,51 @@ fn main() -> eyre::Result<()> {
 
 fn insert_request_if_needed(
     conn: &mut PgConnection,
-    file_id: i32,
-    request_type: &str,
-    model: &str,
+    file_id_val: i32,
+    request_type_val: &str,
+    model_val: &str,
 ) -> eyre::Result<()> {
-    use diesel::sql_query;
-    use models::ExistsResult;
+    use nanuak_schema::files::captions::dsl as captions_dsl;
+    use nanuak_schema::files::embeddings::dsl as embeddings_dsl;
+    use nanuak_schema::files::requests::dsl::*;
 
-    // Determine the table to check based on request_type
-    let table = if request_type == "caption" {
-        "captions"
+    // Check if the embedding or caption already exists
+    let exists = if request_type_val == "caption" {
+        diesel::select(diesel::dsl::exists(
+            captions_dsl::captions
+                .filter(captions_dsl::file_id.eq(file_id_val))
+                .filter(captions_dsl::model.eq(model_val)),
+        ))
+        .get_result::<bool>(conn)?
     } else {
-        "embeddings"
+        diesel::select(diesel::dsl::exists(
+            embeddings_dsl::embeddings
+                .filter(embeddings_dsl::file_id.eq(file_id_val))
+                .filter(embeddings_dsl::model.eq(model_val)),
+        ))
+        .get_result::<bool>(conn)?
     };
 
-    // Check if an embedding or caption already exists for this file and model
-    let query = format!(
-        r#"
-        SELECT EXISTS (
-            SELECT 1 FROM files.{} 
-            WHERE file_id = $1 AND model = $2
-        ) AS exists
-        "#,
-        table
-    );
-
-    let exists_result: ExistsResult = sql_query(query)
-        .bind::<Int4, _>(file_id)
-        .bind::<Text, _>(model)
-        .get_result(conn)?;
-
-    if exists_result.exists {
+    if exists {
         println!(
             "Already have {} for (file_id={}, model='{}'), skipping request.",
-            request_type, file_id, model
+            request_type_val, file_id_val, model_val
         );
         return Ok(());
     }
 
     // Insert into requests
-    sql_query(
-        r#"
-        INSERT INTO files.requests(file_id, request_type, model)
-        VALUES ($1, $2, $3)
-        "#,
-    )
-    .bind::<Int4, _>(file_id)
-    .bind::<Text, _>(request_type)
-    .bind::<Text, _>(model)
-    .execute(conn)?;
+    let new_request = NewRequest {
+        file_id: file_id_val,
+        request_type: request_type_val,
+        model: model_val,
+    };
+
+    insert_into(requests).values(&new_request).execute(conn)?;
 
     println!(
         "Created request: (file_id={}, type='{}', model='{}')",
-        file_id, request_type, model
+        file_id_val, request_type_val, model_val
     );
     Ok(())
-}
-
-mod models {
-    use diesel::sql_types::Bool;
-    use diesel::sql_types::Int4;
-    use diesel::QueryableByName;
-
-    #[derive(Debug, QueryableByName)]
-    pub struct InsertedFile {
-        #[diesel(sql_type = Int4)]
-        pub id: i32,
-    }
-
-    #[derive(Debug, QueryableByName)]
-    pub struct ExistsResult {
-        #[diesel(sql_type = Bool)]
-        pub exists: bool,
-    }
 }
