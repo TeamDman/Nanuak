@@ -10,3 +10,4 @@ __pycache__
 .aider*
 .env
 !.aider.model.settings.yml
+!.aider.startup_commands.txt

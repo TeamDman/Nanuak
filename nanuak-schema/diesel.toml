@@ -8,5 +8,12 @@ custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
 import_types = ["diesel::sql_types::*", "pgvector::sql_types::*","diesel_full_text_search::Tsvector"]
 generate_missing_sql_type_definitions = false
 
+[print_schema.files]
+file = "src/files_schema.rs"
+schema = "files"
+custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
+import_types = ["diesel::sql_types::*", "pgvector::sql_types::*","diesel_full_text_search::Tsvector"]
+generate_missing_sql_type_definitions = false
+
 [migrations_directory]
 dir = "G:\\repos\\Nanuak\\nanuak-schema\\migrations"

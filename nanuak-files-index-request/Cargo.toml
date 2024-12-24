@@ -1,0 +1,13 @@
+[package]
+name = "nanuak-files-index-request"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { workspace = true }
+diesel = { workspace = true }
+sha2 = { workspace = true }
+chrono = { workspace = true }
+eyre = { workspace = true }
+color-eyre = { workspace = true }
+nanuak-schema = { workspace = true }

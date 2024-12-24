@@ -2370,6 +2370,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanuak-files-index-request"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "color-eyre",
+ "diesel",
+ "eyre",
+ "nanuak-schema",
+ "sha2",
+]
+
+[[package]]
 name = "nanuak-schema"
 version = "0.1.0"
 dependencies = [
