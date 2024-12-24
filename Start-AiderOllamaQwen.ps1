@@ -1,1 +1,1 @@
-aider --model ollama_chat/qwen2.5:iq4
+aider --model ollama_chat/qwen2.5:iq4 --load .\.aider.startup_commands.txt
