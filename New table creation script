@@ -1,0 +1,10 @@
+CREATE TABLE public.image_embedding_requests (
+    id SERIAL PRIMARY KEY,
+    image_path TEXT NOT NULL,
+    request_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    hash_value TEXT UNIQUE,
+    hash_algorithm TEXT NOT NULL,
+    completed BOOLEAN DEFAULT FALSE,
+    embedding JSONB
+);
