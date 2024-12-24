@@ -12,11 +12,17 @@ from io import BytesIO
 import requests
 from transformers import BlipProcessor, BlipForConditionalGeneration
 
+
 async def main():
     load_dotenv()
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise ValueError("DATABASE_URL must be set")
+
+    global device, blip_processor, blip_model  # Make these available within the module
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+    blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large").to(device)
 
     global device, blip_processor, blip_model  # Make these available within the module
     device = "cuda" if torch.cuda.is_available() else "cpu"
