@@ -116,7 +116,7 @@ fn insert_request_if_needed(
     model_val: &str,
 ) -> eyre::Result<()> {
     use nanuak_schema::files::captions::dsl as captions_dsl;
-    use nanuak_schema::files::embeddings::dsl as embeddings_dsl;
+    use nanuak_schema::files::embeddings_512::dsl as embeddings_dsl;
     use nanuak_schema::files::requests::dsl::*;
 
     // Check if the embedding or caption already exists
@@ -129,7 +129,7 @@ fn insert_request_if_needed(
         .get_result::<bool>(conn)?
     } else {
         diesel::select(diesel::dsl::exists(
-            embeddings_dsl::embeddings
+            embeddings_dsl::embeddings_512
                 .filter(embeddings_dsl::file_id.eq(file_id_val))
                 .filter(embeddings_dsl::model.eq(model_val)),
         ))

@@ -1,3 +1,4 @@
+from pgvector.asyncpg.register import register_vector
 import asyncio
 import asyncpg
 import os
@@ -20,6 +21,9 @@ async def main():
 
     conn = await asyncpg.connect(database_url)
     print("Connected to Postgres")
+
+    # Register the VECTOR type
+    await register_vector(conn)
 
     # Load the models
     clip_model_name = "openai/clip-vit-base-patch32"
@@ -63,10 +67,10 @@ async def main():
                 emb_model = model if model else clip_model_name
                 # We'll just do the embedding with the CLIP code
                 # Real code might handle multiple model strings
-                embedding = generate_clip_embedding(file_path, clip_model, clip_processor, device)
+                embedding = await generate_clip_embedding(file_path, clip_model, clip_processor, device)
                 # Insert into files.embeddings
                 await conn.execute("""
-                    INSERT INTO files.embeddings(file_id, model, embedding)
+                    INSERT INTO files.embeddings_512(file_id, model, embedding)
                     VALUES ($1, $2, $3)
                 """, file_id, emb_model, embedding)
                 # Mark request as fulfilled
@@ -126,4 +130,5 @@ def generate_blip_caption(file_path, blip_model, blip_processor, device):
     return caption
 
 if __name__ == "__main__":
+    print("Launching...")
     asyncio.run(main())

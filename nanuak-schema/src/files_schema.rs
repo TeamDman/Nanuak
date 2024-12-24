@@ -20,7 +20,7 @@ pub mod files {
         use pgvector::sql_types::*;
         use diesel_full_text_search::Tsvector;
 
-        files.embeddings (id) {
+        files.embeddings_512 (id) {
             id -> Int4,
             file_id -> Int4,
             model -> Text,
@@ -61,12 +61,12 @@ pub mod files {
     }
 
     diesel::joinable!(captions -> files (file_id));
-    diesel::joinable!(embeddings -> files (file_id));
+    diesel::joinable!(embeddings_512 -> files (file_id));
     diesel::joinable!(requests -> files (file_id));
 
     diesel::allow_tables_to_appear_in_same_query!(
         captions,
-        embeddings,
+        embeddings_512,
         files,
         requests,
     );

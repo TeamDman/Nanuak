@@ -1,0 +1,1 @@
+uv run .\nanuak-files-index-fulfill.py

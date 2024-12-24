@@ -17,11 +17,11 @@ CREATE TABLE files.files (
 
 -- 2) Embeddings table: each row stores a vector embedding for a given file+model.
 --    The "model" column can store "clip-vit-base-patch32" or "Salesforce/blip-image-captioning-large" or "bge-m3" etc.
-CREATE TABLE files.embeddings (
+CREATE TABLE files.embeddings_512 (
     id             SERIAL PRIMARY KEY,
     file_id        INT NOT NULL REFERENCES files.files(id) ON DELETE CASCADE,
     model          TEXT NOT NULL,
-    embedding      VECTOR(768) NOT NULL,
+    embedding      VECTOR(512) NOT NULL,
     created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
