@@ -89,9 +89,18 @@ async def upload_image(file: UploadFile = File(...), text_query: str = Form(None
 
         # 3. Notify
         payload = f'{{"request_id":{request_id},"image_path":"{save_path}"}}'
+        request_id = row["id"]
+
+        # 3. Notify caption_request
+        payload = f'{{"request_id":{request_id},"image_path":"{save_path}"}}'
         await conn.execute("SELECT pg_notify($1, $2)", "caption_request", payload)
 
-    print(f"Uploaded image saved to {save_path}, request_id={request_id}, text_query={text_query}")
+
+        # 4. Trigger embedding generation
+        embedding_payload = f'{{"path":"{save_path}"}}' # Assuming image_path is accessible as a URL
+        await conn.execute("SELECT pg_notify($1, $2)", "embedding_request", embedding_payload)
+
+        print(f"Uploaded image saved to {save_path}, request_id={request_id}, text_query={text_query}")
 
     return RedirectResponse(url="/", status_code=303)
 

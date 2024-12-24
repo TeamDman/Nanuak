@@ -109,6 +109,7 @@ async def handle_embedding_request(conn, pid, channel, payload):
         json.dumps(event_payload)
     )
     print(f"NOTIFY embedding_inserted with {event_payload}")
+    return hash_value # Return the hash
 
 def compute_file_hash(path, algorithm="sha256"):
     """Compute a SHA256 hash for the given file path."""
