@@ -6,6 +6,11 @@ import asyncio
 import asyncpg
 from dotenv import load_dotenv
 import random
+import torch
+from PIL import Image
+from io import BytesIO
+import requests
+from transformers import BlipProcessor, BlipForConditionalGeneration
 
 async def main():
     load_dotenv()
@@ -13,8 +18,13 @@ async def main():
     if not database_url:
         raise ValueError("DATABASE_URL must be set")
 
+    global device, blip_processor, blip_model  # Make these available within the module
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+    blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large").to(device)
+
     conn = await asyncpg.connect(database_url)
-    print("Caption Fulfillment & Logger service connected.")
+    print("Caption Fulfillment & Logger service connected. BLIP model loaded.")
 
     # Listen for requests
     await conn.add_listener("caption_request", handle_caption_request)
@@ -50,7 +60,27 @@ async def handle_caption_request(conn, pid, channel, payload):
         return
 
     # In a real system, you'd load the image and run a caption model. We'll just do a random string.
-    caption_text = f"Mock caption for {os.path.basename(image_path)} with random number {random.randint(0,9999)}"
+    try:
+        resp = requests.get(image_path, stream=True)
+        resp.raise_for_status()
+        image = Image.open(BytesIO(resp.raw.read())).convert("RGB")
+
+        inputs = blip_processor(image, return_tensors="pt").to(device)
+        with torch.no_grad():
+            out = blip_model.generate(**inputs, max_length=50)
+        caption_text = blip_processor.decode(out[0], skip_special_tokens=True)
+
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching image: {e}")
+        caption_text = f"Error generating caption for {image_path}: Could not fetch image."
+        # Handle the error appropriately, e.g., log it, return an error response, etc.
+        return  # Or continue with a default caption
+
+    except Exception as e:
+        print(f"Error generating caption: {e}")
+        caption_text = f"Error generating caption for {image_path}: {e}"
+        return  # Or continue with a default caption
+
 
     # Option A: Insert directly into DB
     insert_sql = """
