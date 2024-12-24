@@ -24,8 +24,6 @@ async def main():
     blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large").to(device)
 
-    global device, blip_processor, blip_model  # Make these available within the module
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large").to(device)
 
