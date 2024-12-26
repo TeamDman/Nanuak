@@ -11,3 +11,4 @@ __pycache__
 .env
 !.aider.model.settings.yml
 !.aider.startup_commands.txt
+nanuak-files-index-request/files.txt

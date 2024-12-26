@@ -20,8 +20,11 @@
 ..\image-embedding-experiments\templates\index.html
 ..\image-embedding-experiments\track_requests_server.py
 ..\nanuak-files-index-fulfill\Get-DatabaseUrl.ps1
+..\nanuak-files-index-fulfill\Invoke-Fulfillment.ps1
+..\nanuak-files-index-fulfill\Invoke-Search.ps1
 ..\nanuak-files-index-fulfill\Invoke.ps1
 ..\nanuak-files-index-fulfill\nanuak-files-index-fulfill.py
+..\nanuak-files-index-fulfill\search.py
 ..\nanuak-files-index-request\Cargo.toml
 ..\nanuak-files-index-request\Get-DatabaseUrl.ps1
 ..\nanuak-files-index-request\Invoke-Example.ps1

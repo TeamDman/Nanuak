@@ -2,22 +2,41 @@ use crate::db::AppState;
 use axum::response::Html;
 use axum::response::IntoResponse;
 use axum::routing::get;
+use axum::routing::post;
 use axum::Router;
 use std::net::SocketAddr;
 use tower_http::services::ServeDir;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 
-// Declare the modules
 mod db;
 mod routes;
 
+use clap::Parser;
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::EnvFilter;
+
+#[derive(Parser, Debug)]
+#[command(version, about = "Nanuak Files UI")]
+struct Args {
+    /// If set, enable debug logging
+    #[arg(long)]
+    debug: bool,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize logging
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Parse CLI
+    let args = Args::parse();
+
+    // Setup logging
+    let log_level = if args.debug {
+        LevelFilter::DEBUG
+    } else {
+        LevelFilter::INFO
+    };
+    let env_filter = EnvFilter::builder()
+        .with_default_directive(log_level.into())
+        .from_env_lossy();
+    tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
     // Load .env if you like
     dotenvy::dotenv().ok();
@@ -26,14 +45,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = AppState::new().await?;
 
     // Build our router
+    // Note that for the new POST endpoint, we need `post(routes::get_files_details)`
     let app = Router::new()
         .route("/", get(index_html)) // Serve the index HTML
         .route("/files", get(routes::get_files)) // GET /files -> JSON
+        .route("/files/details", post(routes::get_files_details)) // POST -> get file details
         .route("/search", get(routes::search_files)) // GET /search -> JSON
+        .route("/embedding_search", get(routes::embedding_search))
         .route("/images/:file_id", get(routes::get_image))
         // Serve any additional static content from /static if you like
         .nest_service("/static", ServeDir::new("static"))
-        // Use state
+        // Use our shared state
         .with_state(state);
 
     // Run
@@ -48,7 +70,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 // Serve the index.html from compiled-in template or from disk.
 async fn index_html() -> impl IntoResponse {
-    // In a real app, load from `include_str!` or read from disk
     let html = include_str!("../templates/index.html");
     Html(html.to_owned())
 }

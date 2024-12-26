@@ -1,26 +1,34 @@
-use clap::Parser;
+use clap::{Parser, ArgGroup}; // Import ArgGroup
 use diesel::dsl::now;
 use diesel::insert_into;
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use diesel::upsert::excluded;
-use nanuak_schema::files_models::NewFile;
-use nanuak_schema::files_models::NewRequest;
-use sha2::Digest;
-use sha2::Sha256;
+use nanuak_schema::files_models::{NewFile, NewRequest};
+use sha2::{Digest, Sha256};
 use std::fs::File;
 use std::io::Read;
 use std::path::PathBuf;
+use tracing::{debug, info};
+use tracing_subscriber;
 
 #[derive(Parser, Debug)]
 #[command(
     version,
-    about = "Index a file and optionally request embedding/caption"
+    about = "Index a file and optionally request embedding/caption",
+    group = ArgGroup::new("input")
+        .required(true)
+        .args(&["file_path", "file_path_txt"])
 )]
 struct Args {
     /// Path to the file to index
-    file_path: PathBuf,
+    #[arg(long)]
+    file_path: Option<PathBuf>,
+
+    /// Path to a text file containing list of file paths to index
+    #[arg(long)]
+    file_path_txt: Option<PathBuf>,
 
     /// Whether to request an embedding
     #[arg(long, default_value = "true")]
@@ -38,12 +46,28 @@ struct Args {
     #[arg(long, default_value = "Salesforce/blip-image-captioning-large")]
     captioning_model: String,
 
-
+    /// Enable debug logging
+    #[arg(long, action = clap::ArgAction::SetTrue)]
+    debug: bool,
 }
 
 fn main() -> eyre::Result<()> {
     color_eyre::install()?;
+
     let args = Args::parse();
+
+    // Initialize tracing subscriber
+    if args.debug {
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .init();
+    } else {
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::INFO)
+            .init();
+    }
+
+    debug!("Arguments: {:?}", args);
 
     // Setup DB connection
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -51,11 +75,41 @@ fn main() -> eyre::Result<()> {
     let pool = Pool::builder().build(manager)?;
     let mut conn = pool.get()?;
 
+    // Gather file paths
+    let file_paths = if let Some(txt_path) = &args.file_path_txt {
+        let content = std::fs::read_to_string(txt_path)?;
+        content
+            .lines()
+            .filter_map(|line| {
+                let trimmed = line.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(PathBuf::from(trimmed))
+                }
+            })
+            .collect::<Vec<PathBuf>>()
+    } else if let Some(single_path) = &args.file_path {
+        vec![single_path.to_owned()]
+    } else {
+        vec![]
+    };
+
+    for file_path in file_paths {
+        debug!("Processing file: {:?}", file_path);
+        process_file(&mut conn, &file_path, &args)?;
+    }
+
+    info!("Requests created (if needed).");
+    Ok(())
+}
+
+fn process_file(conn: &mut PgConnection, file_path: &PathBuf, args: &Args) -> eyre::Result<()> {
     // 1) Gather file info: size, sha256
-    let metadata = std::fs::metadata(&args.file_path)?;
+    let metadata = std::fs::metadata(&file_path)?;
     let file_size = metadata.len() as i64;
 
-    let mut file = File::open(&args.file_path)?;
+    let mut file = File::open(&file_path)?;
     let mut hasher = Sha256::new();
     let mut buffer = [0u8; 8192];
     loop {
@@ -69,7 +123,7 @@ fn main() -> eyre::Result<()> {
     let hash_algo = "sha256";
 
     // 2) Insert or find existing record in files.files
-    let file_path_str = args.file_path.to_string_lossy().to_string();
+    let file_path_str = file_path.to_string_lossy().to_string();
 
     // Perform the INSERT ... RETURNING id query
     let new_file = NewFile {
@@ -92,22 +146,23 @@ fn main() -> eyre::Result<()> {
             files_dsl::seen_at.eq(now),
         ))
         .returning(files_dsl::id)
-        .get_result(&mut conn)?;
+        .get_result(conn)?;
 
     let file_id = inserted_file;
-    println!("File record ID = {}", file_id);
+    info!("File record ID = {}", file_id);
 
     // 3) Optionally create requests
     if args.embed {
-        insert_request_if_needed(&mut conn, file_id, "embed", &args.embedding_model)?;
+        insert_request_if_needed(conn, file_id, "embed", &args.embedding_model)?;
     }
     if args.caption {
-        insert_request_if_needed(&mut conn, file_id, "caption", &args.captioning_model)?;
+        insert_request_if_needed(conn, file_id, "caption", &args.captioning_model)?;
     }
 
-    println!("Requests created (if needed).");
     Ok(())
 }
+
+
 
 fn insert_request_if_needed(
     conn: &mut PgConnection,
@@ -137,7 +192,7 @@ fn insert_request_if_needed(
     };
 
     if exists {
-        println!(
+        info!(
             "Already have {} for (file_id={}, model='{}'), skipping request.",
             request_type_val, file_id_val, model_val
         );
@@ -153,7 +208,7 @@ fn insert_request_if_needed(
 
     insert_into(requests).values(&new_request).execute(conn)?;
 
-    println!(
+    info!(
         "Created request: (file_id={}, type='{}', model='{}')",
         file_id_val, request_type_val, model_val
     );

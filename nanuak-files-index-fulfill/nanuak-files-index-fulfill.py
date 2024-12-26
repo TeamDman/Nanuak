@@ -1,3 +1,4 @@
+import pillow_avif
 from pgvector.asyncpg.register import register_vector
 import asyncio
 import asyncpg

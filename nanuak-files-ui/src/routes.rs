@@ -7,9 +7,15 @@ use axum::response::IntoResponse;
 use axum::response::Response;
 use axum::Json;
 use diesel::prelude::*;
+use diesel::sql_query;
+use diesel::sql_types::Array;
+use diesel::sql_types::Int4;
+use diesel::RunQueryDsl;
 use nanuak_schema::files::captions::dsl as cc;
 use nanuak_schema::files::files::dsl as ff;
+use serde::Deserialize;
 use serde::Serialize;
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::PathBuf;
 
@@ -22,8 +28,16 @@ pub struct FileWithCaption {
     pub caption: Option<String>,
 }
 
+// We expand the GET /files endpoint to handle offset + limit
+#[derive(Debug, Deserialize)]
+pub struct FilesQuery {
+    pub offset: Option<i64>,
+    pub limit: Option<i64>,
+}
+
 pub async fn get_files(
     State(state): State<AppState>,
+    Query(params): Query<FilesQuery>,
 ) -> Result<Json<Vec<FileWithCaption>>, (StatusCode, String)> {
     let mut conn = state.pool.get().map_err(|_| {
         (
@@ -32,16 +46,22 @@ pub async fn get_files(
         )
     })?;
 
-    // The Diesel approach: left_join, then pick the columns you want
-    // We'll rename them in code, or just store them in a tuple first.
-    let results = ff::files
+    // We parse offset + limit
+    let offset_val = params.offset.unwrap_or(0);
+    let limit_val = params.limit.unwrap_or(100); // default limit e.g. 100 if none provided
+
+    // left_join for captions
+    let query = ff::files
         .left_join(cc::captions.on(cc::file_id.eq(ff::id)))
-        // columns to select (ff::id, ff::path, cc::caption)
         .select((ff::id, ff::path, cc::caption.nullable()))
+        .offset(offset_val)
+        .limit(limit_val);
+
+    let results = query
         .load::<(i32, String, Option<String>)>(&mut conn)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    // Convert the tuple into your struct
+    // Convert
     let files = results
         .into_iter()
         .map(|(file_id, path, caption)| FileWithCaption {
@@ -50,8 +70,59 @@ pub async fn get_files(
             caption,
         })
         .collect();
-
     Ok(Json(files))
+}
+
+// --------------- /files/details ---------------
+// So we can request data for a set of file IDs
+
+#[derive(Debug, Deserialize)]
+pub struct FileDetailsRequest {
+    pub file_ids: Vec<i32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FileDetailsResponse {
+    pub file_id: i32,
+    pub path: String,
+    pub caption: Option<String>,
+}
+
+pub async fn get_files_details(
+    State(state): State<AppState>,
+    Json(body): Json<FileDetailsRequest>,
+) -> Result<Json<Vec<FileDetailsResponse>>, (StatusCode, String)> {
+    let mut conn = state.pool.get().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "DB pool error".to_string(),
+        )
+    })?;
+
+    if body.file_ids.is_empty() {
+        return Ok(Json(vec![]));
+    }
+
+    // We'll do a left_join with captions too
+    // We can do something like "WHERE id = ANY($1)" with Diesel
+    // but let's keep it simpler with standard DSL:
+    let results = ff::files
+        .filter(ff::id.eq_any(&body.file_ids))
+        .left_join(cc::captions.on(cc::file_id.eq(ff::id)))
+        .select((ff::id, ff::path, cc::caption.nullable()))
+        .load::<(i32, String, Option<String>)>(&mut conn)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let data = results
+        .into_iter()
+        .map(|(file_id, path, caption)| FileDetailsResponse {
+            file_id,
+            path,
+            caption,
+        })
+        .collect();
+
+    Ok(Json(data))
 }
 
 // --------------- /search ---------------
@@ -77,14 +148,11 @@ pub async fn search_files(
         )
     })?;
 
-    let caption_q = params.caption.unwrap_or_default();
-    let embedding_q = params.embedding.unwrap_or_default();
+    let caption_q = params.caption.clone().unwrap_or_default();
+    let embedding_q = params.embedding.clone().unwrap_or_default();
 
-    use nanuak_schema::files::captions::dsl as cc;
-    use nanuak_schema::files::files::dsl as ff;
-    // We'll only do text-based caption searching here:
+    // If both empty => return all
     if caption_q.is_empty() && embedding_q.is_empty() {
-        // Return all file_id’s
         let file_ids = ff::files
             .select(ff::id)
             .load::<i32>(&mut conn)
@@ -97,19 +165,18 @@ pub async fn search_files(
         return Ok(Json(data));
     }
 
-    // Build up a Diesel query for text searching
+    // Only do text-based searching for caption
     let mut query = ff::files
         .left_join(cc::captions.on(cc::file_id.eq(ff::id)))
         .select(ff::id)
-        .into_boxed(); // into_boxed for conditionally adding filters
+        .into_boxed();
 
     if !caption_q.is_empty() {
-        // Diesel’s `.filter(cc::caption.ilike(...))` for case-insensitive partial
         query = query.filter(cc::caption.ilike(format!("%{}%", caption_q)));
     }
 
-    // If you want to do embedding-based filtering, you’d handle that here (but that’s more advanced).
-    // For now, we skip it if embedding_q is not empty.
+    // embedding_q is not handled here, so if you pass embedding it’s ignored in this text-based route
+    // If you want to unify them, you can. Right now, we skip it.
 
     let results = query
         .load::<i32>(&mut conn)
@@ -122,6 +189,109 @@ pub async fn search_files(
     Ok(Json(data))
 }
 
+// --------------- /embedding_search ---------------
+#[derive(Debug, Deserialize)]
+struct EmbeddingSearchResponse {
+    file_id: i32,
+    distance: f64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EmbeddedSearchResult {
+    file_id: i32,
+    path: String,
+    distance: f64,
+}
+
+pub async fn embedding_search(
+    State(state): State<AppState>,
+    Query(params): Query<SearchParams>,
+) -> Result<Json<Vec<EmbeddedSearchResult>>, (StatusCode, String)> {
+    // Our code uses "params.caption" for the actual embedding text
+    let query_str = params.caption.clone().unwrap_or_default();
+    if query_str.is_empty() {
+        return Ok(Json(vec![]));
+    }
+
+    // 1) call the external Python service
+    let fastapi_url = format!(
+        "http://127.0.0.1:8000/search_embedding?q={}",
+        urlencoding::encode(&query_str)
+    );
+
+    let client = reqwest::Client::new();
+    let response = client
+        .get(&fastapi_url)
+        .send()
+        .await
+        .map_err(|e| (StatusCode::BAD_GATEWAY, e.to_string()))?;
+
+    if !response.status().is_success() {
+        return Err((StatusCode::BAD_GATEWAY, "FastAPI call failed".to_string()));
+    }
+
+    let data = response
+        .json::<Vec<EmbeddingSearchResponse>>()
+        .await
+        .map_err(|e| (StatusCode::BAD_GATEWAY, e.to_string()))?;
+
+    // data is an array of { file_id, distance }
+    let file_ids: Vec<i32> = data.iter().map(|x| x.file_id).collect();
+    if file_ids.is_empty() {
+        return Ok(Json(vec![]));
+    }
+
+    let mut conn = state.pool.get().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "DB pool error".to_string(),
+        )
+    })?;
+
+    // We'll get the path from the DB
+    // Diesel trick for "WHERE id = ANY($1)"
+    #[derive(Debug, QueryableByName)]
+    struct IdPath {
+        #[diesel(sql_type = diesel::sql_types::Int4)]
+        id: i32,
+
+        #[diesel(sql_type = diesel::sql_types::Text)]
+        path: String,
+    }
+
+    let pairs = sql_query("SELECT id, path FROM files.files WHERE id = ANY($1)")
+        .bind::<Array<Int4>, _>(file_ids.clone())
+        .load::<IdPath>(&mut conn)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let map_path: HashMap<i32, String> = pairs
+        .into_iter()
+        .map(|record| (record.id, record.path))
+        .collect();
+
+    // build final
+    let mut results: Vec<EmbeddedSearchResult> = data
+        .iter()
+        .map(|r| {
+            let path = map_path.get(&r.file_id).cloned().unwrap_or_default();
+            EmbeddedSearchResult {
+                file_id: r.file_id,
+                path,
+                distance: r.distance,
+            }
+        })
+        .collect();
+
+    // (Optionally) sort by distance ascending if needed
+    results.sort_by(|a, b| {
+        a.distance
+            .partial_cmp(&b.distance)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    Ok(Json(results))
+}
+
 // --------------- /images/{file_id} ---------------
 pub async fn get_image(
     State(state): State<AppState>,
@@ -132,7 +302,6 @@ pub async fn get_image(
         Err(_) => return (StatusCode::INTERNAL_SERVER_ERROR, "DB pool error").into_response(),
     };
 
-    // Query the path
     let path_str = match ff::files
         .filter(ff::id.eq(file_id))
         .select(ff::path)
@@ -144,7 +313,6 @@ pub async fn get_image(
         Err(e) => return (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response(),
     };
 
-    // Attempt to read from disk
     let path = PathBuf::from(path_str);
     let mut file = match std::fs::File::open(&path) {
         Ok(f) => f,
@@ -163,7 +331,6 @@ pub async fn get_image(
         _ => "application/octet-stream",
     };
 
-    // Build a Response<Full<_>>. This time, we can return it as an `impl IntoResponse`.
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(axum::http::header::CONTENT_TYPE, mime_type)

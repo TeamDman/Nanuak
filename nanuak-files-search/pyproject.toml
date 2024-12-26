@@ -1,10 +1,7 @@
 [project]
-name = "nanuak-files-index-fulfill"
+name = "nanuak-files-search"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "pgvector>=0.3.6",
-    "pillow-avif-plugin>=1.4.6",
-]
+dependencies = []

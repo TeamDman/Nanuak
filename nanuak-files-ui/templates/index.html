@@ -1,120 +1,311 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <title>Nanuak Files UI</title>
-  <!-- Tailwind CSS via CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- htmx -->
-  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
-</head>
-<body class="bg-gray-900 text-white p-6">
-  <header class="mb-4">
-    <h1 class="text-3xl font-bold">Nanuak Files UI</h1>
-    <p class="mt-1 text-gray-300">
-      This is a simple interface to show all files, plus a search on caption or embedding.
-    </p>
-  </header>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Nanuak Files UI</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- htmx -->
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+  </head>
+  <body class="bg-gray-900 text-white p-6">
+    <header class="mb-4">
+      <h1 class="text-3xl font-bold">Nanuak Files UI</h1>
+      <p class="mt-1 text-gray-300">
+        This is a simple interface to show all files, plus a search on caption
+        or embedding.
+      </p>
+    </header>
 
-  <section class="flex space-x-4 mb-4">
-    <div>
-      <label for="captionSearch" class="block mb-1">Caption Search</label>
-      <input 
-        type="text" 
-        id="captionSearch"
-        name="captionSearch"
-        class="text-black px-2 py-1 rounded"
-        placeholder="Enter text..."
-      />
-    </div>
-    <div>
-      <label for="embeddingSearch" class="block mb-1">Embedding Search</label>
-      <input 
-        type="text" 
-        id="embeddingSearch"
-        name="embeddingSearch"
-        class="text-black px-2 py-1 rounded"
-        placeholder="Enter text..."
-      />
-    </div>
-    <div>
-      <button 
-        id="searchBtn" 
-        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5"
+    <!-- SEARCH AREA -->
+    <section class="flex space-x-4 mb-4">
+      <div>
+        <label for="captionSearch" class="block mb-1">Caption Search</label>
+        <input
+          type="text"
+          id="captionSearch"
+          name="captionSearch"
+          class="text-black px-2 py-1 rounded"
+          placeholder="Enter text..."
+          oninput="onSearchBoxInput()"
+        />
+      </div>
+
+      <div>
+        <label for="embeddingSearch" class="block mb-1">Embedding Search</label>
+        <input
+          type="text"
+          id="embeddingSearch"
+          name="embeddingSearch"
+          class="text-black px-2 py-1 rounded"
+          placeholder="Enter text..."
+          oninput="onSearchBoxInput()"
+        />
+      </div>
+
+      <div>
+        <button
+          id="searchBtn"
+          class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5"
+        >
+          Search
+        </button>
+      </div>
+    </section>
+
+    <!-- FILES GRID -->
+    <section id="filesContainer" class="grid grid-cols-3 gap-4"></section>
+
+    <!-- LOAD MORE BUTTON -->
+    <div class="mt-4" id="loadMoreContainer" style="display: none;">
+      <button
+        id="loadMoreBtn"
+        class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
       >
-        Search
+        Load More
       </button>
     </div>
-  </section>
 
-  <section id="filesContainer" class="grid grid-cols-3 gap-4">
-    <!-- We'll fill this via JS after GET /files -->
-  </section>
+    <script>
+      // We keep an array of all files we’ve currently loaded from the server.
+      // “allFiles” is an array of objects: { file_id, path, caption, … }
+      let allFiles = [];
 
-  <script>
-    // 1) On page load, fetch /files
-    // 2) Display them in #filesContainer
-    // 3) On "Search" button, fetch /search?caption=...&embedding=... 
-    //    => get array of {file_id}, then hide items not in that array
+      // We'll track whether we’re currently searching or not.
+      // Because if we do a text-based search, we might skip adding more files from /files.
+      // This is just for demonstration: you can refine the logic as needed.
+      let currentQuery = {
+        caption: "",
+        embedding: ""
+      };
 
-    let allFiles = []; // We'll store the full list in memory
+      // We'll keep track of offset and page size for the /files endpoint:
+      let currentOffset = 0;
+      const PAGE_SIZE = 1000; // or something to limit to 1000
+      let moreFilesAvailable = true;
 
-    async function loadAllFiles() {
-      const resp = await fetch('/files');
-      const data = await resp.json();
-      allFiles = data;
-      renderFiles(data);
-    }
+      // We also keep a small timer for the 200ms debounce:
+      let searchTimeout = null;
 
-    function renderFiles(files) {
-      const container = document.getElementById('filesContainer');
-      container.innerHTML = '';
-      files.forEach(f => {
-        const div = document.createElement('div');
-        div.classList.add("bg-gray-800", "p-2", "rounded");
+      // On page load, fetch the first batch
+      window.addEventListener("DOMContentLoaded", () => {
+        loadFilesBatch(currentOffset).catch(console.error);
 
-        // If there's no caption, show 'No caption yet'
-        const caption = f.caption || "No caption yet...";
+        document
+          .getElementById("searchBtn")
+          .addEventListener("click", () => {
+            doSearch().catch(console.error);
+          });
 
-        // We'll embed an <img> that loads from /images/{file_id}
-        // If it's not an image, it may error out or show generic
-        div.innerHTML = `
-          <img src="/images/${f.file_id}" alt="file ${f.file_id}" class="w-full mb-2 object-cover">
-          <div class="font-bold">ID: ${f.file_id}</div>
-          <div class="text-sm truncate">${f.path}</div>
-          <div class="text-sm italic mt-2">${caption}</div>
-        `;
-        container.appendChild(div);
+        document
+          .getElementById("loadMoreBtn")
+          .addEventListener("click", () => {
+            if (moreFilesAvailable) {
+              currentOffset += PAGE_SIZE;
+              loadFilesBatch(currentOffset).catch(console.error);
+            }
+          });
       });
-    }
 
-    async function doSearch() {
-      const captionInput = document.getElementById('captionSearch').value;
-      const embeddingInput = document.getElementById('embeddingSearch').value;
+      // ------------- BATCH LOADING LOGIC -------------
+      async function loadFilesBatch(offset) {
+        // If we’re in the middle of a search, maybe skip or do your own logic.
+        // We’ll just do it anyway for demonstration.
+        // We'll call GET /files?offset=XYZ&limit=1000 (assuming you updated your server).
+        let url = `/files?offset=${offset}&limit=${PAGE_SIZE}`;
+        let resp = await fetch(url);
+        if (!resp.ok) {
+          console.error("Error loading files:", resp.statusText);
+          return;
+        }
+        let data = await resp.json(); // array of { file_id, path, caption }
 
-      const params = new URLSearchParams();
-      if(captionInput) params.append("caption", captionInput);
-      if(embeddingInput) params.append("embedding", embeddingInput);
+        // If data < PAGE_SIZE, means no more data
+        if (data.length < PAGE_SIZE) {
+          moreFilesAvailable = false;
+          document.getElementById("loadMoreContainer").style.display = "none";
+        } else {
+          moreFilesAvailable = true;
+          document.getElementById("loadMoreContainer").style.display = "block";
+        }
 
-      const url = '/search?' + params.toString();
-      const resp = await fetch(url);
-      const data = await resp.json(); // array of { file_id }
+        // Merge these new files into allFiles, but avoid duplicates
+        // We'll do a quick Set or map approach
+        let knownIds = new Set(allFiles.map(f => f.file_id));
+        let newOnes = data.filter(f => !knownIds.has(f.file_id));
+        allFiles = allFiles.concat(newOnes);
+        renderFiles(allFiles);
+      }
 
-      // Convert to a Set for quick membership test
-      const validIds = new Set(data.map(obj => obj.file_id));
+      // ------------- SEARCH DEBOUNCE LOGIC -------------
+      function onSearchBoxInput() {
+        if (searchTimeout) {
+          clearTimeout(searchTimeout);
+        }
+        searchTimeout = setTimeout(() => {
+          doSearch().catch(console.error);
+        }, 200);
+      }
 
-      // We'll filter the allFiles array
-      const filtered = allFiles.filter(f => validIds.has(f.file_id));
-      renderFiles(filtered);
-    }
+      // ------------- DO SEARCH -------------
+      async function doSearch() {
+        const captionInput = document.getElementById("captionSearch").value;
+        const embeddingInput = document.getElementById("embeddingSearch").value;
 
-    document.getElementById('searchBtn').addEventListener('click', () => {
-      doSearch().catch(console.error);
-    });
+        // update current query
+        currentQuery.caption = captionInput;
+        currentQuery.embedding = embeddingInput;
 
-    // On page load
-    loadAllFiles().catch(console.error);
-  </script>
+        // if both are empty, show all
+        if (!captionInput && !embeddingInput) {
+          renderFiles(allFiles);
+          return;
+        }
 
-</body>
+        // if we only do text-based searching in /search, or we also do embedding-based searching,
+        // we can unify them. For demonstration, we'll do text-based if there's caption input,
+        // and embedding-based if there's embedding input, or do both if you want.
+
+        // We'll do a simple approach:
+        if (embeddingInput) {
+          // call an /embedding_search endpoint
+          await doEmbeddingSearch(embeddingInput);
+        } else {
+          // call /search for caption
+          await doCaptionSearch(captionInput);
+        }
+      }
+
+      // ------------- CAPTION SEARCH -------------
+      async function doCaptionSearch(q) {
+        // call /search?caption=... => returns array of { file_id }
+        let params = new URLSearchParams();
+        params.append("caption", q);
+        const url = "/search?" + params.toString();
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          console.error("Caption search error:", resp.statusText);
+          return;
+        }
+        const data = await resp.json(); // array of { file_id }
+
+        // convert to a set
+        const validIds = new Set(data.map(obj => obj.file_id));
+        // filter from allFiles
+        const filtered = allFiles.filter(f => validIds.has(f.file_id));
+
+        // we do not reorder them in this example, but if you want,
+        // you can reorder them by something. We'll just show them as is.
+        renderFiles(filtered);
+      }
+
+      // ------------- EMBEDDING SEARCH -------------
+      async function doEmbeddingSearch(q) {
+        // call /embedding_search?embedding=... or /embedding_search?caption=... 
+        // depending on how you set up your server. 
+        // In your code snippet, you used `params.caption` inside embedding_search.
+        // We'll do that approach:
+        let params = new URLSearchParams();
+        params.append("caption", q);
+        const url = "/embedding_search?" + params.toString();
+        const resp = await fetch(url);
+        if (!resp.ok) {
+          console.error("Embedding search error:", resp.statusText);
+          return;
+        }
+        const data = await resp.json(); // array of { file_id, path, distance }
+
+        // Because embedding search might return files not in allFiles yet
+        // We'll see which ones are missing
+        let knownIds = new Set(allFiles.map(f => f.file_id));
+        let missingIds = data
+          .map(e => e.file_id)
+          .filter(id => !knownIds.has(id));
+
+        if (missingIds.length > 0) {
+          // call a new endpoint /files/details with POST { file_ids: [ ... ] }
+          try {
+            let detailsResp = await fetch("/files/details", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ file_ids: missingIds })
+            });
+            if (detailsResp.ok) {
+              let newData = await detailsResp.json(); 
+              // newData = array of { file_id, path, caption? }
+              // Merge it into allFiles
+              newData.forEach(item => {
+                allFiles.push({
+                  file_id: item.file_id,
+                  path: item.path,
+                  caption: item.caption // optional
+                });
+              });
+            } else {
+              console.error("Failed to fetch details for missing IDs");
+            }
+          } catch (e) {
+            console.error("Error calling /files/details", e);
+          }
+        }
+
+        // Now we have the data array from embedding search, which includes distance.
+        // Let's build a new array with the relevant info from allFiles or from the new data
+        // We'll preserve the order from the embedding search (lowest distance first).
+        let results = data.map(res => {
+          // see if we have it in allFiles
+          let existing = allFiles.find(f => f.file_id === res.file_id);
+          if (!existing) {
+            // fallback if not found
+            return {
+              file_id: res.file_id,
+              path: "",
+              caption: "",
+              distance: res.distance
+            };
+          }
+          return {
+            file_id: existing.file_id,
+            path: existing.path,
+            caption: existing.caption || "",
+            distance: res.distance
+          };
+        });
+
+        // We can then sort by distance ascending (if it’s not already sorted).
+        results.sort((a, b) => a.distance - b.distance);
+
+        // And show them:
+        renderFiles(results);
+      }
+
+      // ------------- RENDER FILES -------------
+      function renderFiles(files) {
+        const container = document.getElementById("filesContainer");
+        container.innerHTML = "";
+        files.forEach((f) => {
+          const div = document.createElement("div");
+          div.classList.add("bg-gray-800", "p-2", "rounded", "overflow-hidden");
+
+          const caption = f.caption || "No caption yet...";
+          const distanceLine =
+            f.distance !== undefined
+              ? `<div class="text-xs mt-1">Distance: ${f.distance.toFixed(4)}</div>`
+              : "";
+
+          div.innerHTML = `
+            <img src="/images/${f.file_id}" 
+                 alt="file ${f.file_id}" 
+                 class="w-full mb-2 object-cover"
+                 loading="lazy">
+            <div class="font-bold">ID: ${f.file_id}</div>
+            <div class="text-sm truncate">${f.path || ""}</div>
+            <div class="text-sm italic mt-2">${caption}</div>
+            ${distanceLine}
+          `;
+          container.appendChild(div);
+        });
+      }
+    </script>
+  </body>
 </html>
