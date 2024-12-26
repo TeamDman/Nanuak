@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Nanuak Files UI</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- htmx -->
+  <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+</head>
+<body class="bg-gray-900 text-white p-6">
+  <header class="mb-4">
+    <h1 class="text-3xl font-bold">Nanuak Files UI</h1>
+    <p class="mt-1 text-gray-300">
+      This is a simple interface to show all files, plus a search on caption or embedding.
+    </p>
+  </header>
+
+  <section class="flex space-x-4 mb-4">
+    <div>
+      <label for="captionSearch" class="block mb-1">Caption Search</label>
+      <input 
+        type="text" 
+        id="captionSearch"
+        name="captionSearch"
+        class="text-black px-2 py-1 rounded"
+        placeholder="Enter text..."
+      />
+    </div>
+    <div>
+      <label for="embeddingSearch" class="block mb-1">Embedding Search</label>
+      <input 
+        type="text" 
+        id="embeddingSearch"
+        name="embeddingSearch"
+        class="text-black px-2 py-1 rounded"
+        placeholder="Enter text..."
+      />
+    </div>
+    <div>
+      <button 
+        id="searchBtn" 
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-5"
+      >
+        Search
+      </button>
+    </div>
+  </section>
+
+  <section id="filesContainer" class="grid grid-cols-3 gap-4">
+    <!-- We'll fill this via JS after GET /files -->
+  </section>
+
+  <script>
+    // 1) On page load, fetch /files
+    // 2) Display them in #filesContainer
+    // 3) On "Search" button, fetch /search?caption=...&embedding=... 
+    //    => get array of {file_id}, then hide items not in that array
+
+    let allFiles = []; // We'll store the full list in memory
+
+    async function loadAllFiles() {
+      const resp = await fetch('/files');
+      const data = await resp.json();
+      allFiles = data;
+      renderFiles(data);
+    }
+
+    function renderFiles(files) {
+      const container = document.getElementById('filesContainer');
+      container.innerHTML = '';
+      files.forEach(f => {
+        const div = document.createElement('div');
+        div.classList.add("bg-gray-800", "p-2", "rounded");
+
+        // If there's no caption, show 'No caption yet'
+        const caption = f.caption || "No caption yet...";
+
+        // We'll embed an <img> that loads from /images/{file_id}
+        // If it's not an image, it may error out or show generic
+        div.innerHTML = `
+          <img src="/images/${f.file_id}" alt="file ${f.file_id}" class="w-full mb-2 object-cover">
+          <div class="font-bold">ID: ${f.file_id}</div>
+          <div class="text-sm truncate">${f.path}</div>
+          <div class="text-sm italic mt-2">${caption}</div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function doSearch() {
+      const captionInput = document.getElementById('captionSearch').value;
+      const embeddingInput = document.getElementById('embeddingSearch').value;
+
+      const params = new URLSearchParams();
+      if(captionInput) params.append("caption", captionInput);
+      if(embeddingInput) params.append("embedding", embeddingInput);
+
+      const url = '/search?' + params.toString();
+      const resp = await fetch(url);
+      const data = await resp.json(); // array of { file_id }
+
+      // Convert to a Set for quick membership test
+      const validIds = new Set(data.map(obj => obj.file_id));
+
+      // We'll filter the allFiles array
+      const filtered = allFiles.filter(f => validIds.has(f.file_id));
+      renderFiles(filtered);
+    }
+
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      doSearch().catch(console.error);
+    });
+
+    // On page load
+    loadAllFiles().catch(console.error);
+  </script>
+
+</body>
+</html>
