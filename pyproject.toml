@@ -28,7 +28,7 @@ url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.uv.workspace]
-members = ["nanuak-files-index-fulfill", "nanuak-files-search"]
+members = ["nanuak-files-index-fulfill", "nanuak-files-search", "nanuak-whisper"]
 
 [dependency-groups]
 dev = [
