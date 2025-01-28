@@ -1322,6 +1322,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanuak-git"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "color-eyre",
+ "eyre",
+ "ignore",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "nanuak-prompting"
 version = "0.1.0"
 dependencies = [
