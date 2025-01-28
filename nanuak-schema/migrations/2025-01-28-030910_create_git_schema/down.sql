@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS git.cloned_repos;
+DROP SCHEMA IF EXISTS git CASCADE;

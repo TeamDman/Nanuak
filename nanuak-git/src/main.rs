@@ -1,5 +1,13 @@
+pub mod db;
+pub mod crawl_repos;
+pub mod messages;
+
 use clap::{Parser, Subcommand};
 use color_eyre::eyre::Result;
+use db::upsert_cloned_repos;
+use diesel::{r2d2::ConnectionManager, PgConnection};
+use messages::CrawlMessage;
+use r2d2::Pool;
 use tracing::{info, warn};
 use tracing_subscriber::EnvFilter;
 use std::path::PathBuf;
@@ -40,100 +48,52 @@ async fn main() -> Result<()> {
         .from_env_lossy();
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
+    //
+    // 1) Setup a DB pool
+    //
+    let database_url = std::env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set in env or .env");
+    let manager = ConnectionManager::<PgConnection>::new(&database_url);
+    let pool = Pool::builder()
+        .build(manager)
+        .expect("Failed to create r2d2 pool for PgConnection");
+
+
     match cli.command {
         Commands::Crawl { dir } => {
-            crawl_git_repos(dir).await?;
-        }
-    }
+            // Start the crawler
+            let (mut rx, handle) = crawl_repos::crawl_repos(dir);
 
-    Ok(())
-}
-
-async fn crawl_git_repos(start_dir: PathBuf) -> Result<()> {
-    info!("Crawling for Git repos in {:?}", start_dir);
-    // 1) Validate the path
-    if !start_dir.exists() {
-        return Err(color_eyre::eyre::eyre!(
-            "Path does not exist: {:?}",
-            start_dir
-        ));
-    }
-
-    // 2) Use `ignore` crate or simple recursion to find .git folders
-    //    For instance:
-    //    WalkBuilder::new(&start_dir).build() ...
-
-    // For demonstration, let’s show a quick approach:
-    use ignore::WalkBuilder;
-    for result in WalkBuilder::new(&start_dir).build() {
-        let entry = match result {
-            Ok(e) => e,
-            Err(e) => {
-                warn!("Error reading entry: {:?}", e);
-                continue;
+            // We'll get a single connection now. If you prefer to open/close
+            // a new one for each FoundRepo, that's also possible.
+            let mut conn = pool.get()?;
+            
+            // In a loop, read from rx
+            while let Some(msg) = rx.recv().await {
+                match msg {
+                    CrawlMessage::FoundRepo { path, remotes } => {
+                        println!("Found repo: {:?}, remotes={}", path, remotes);
+                        // e.g. store in DB, etc.
+                        upsert_cloned_repos(&mut conn, &[(path, remotes)])?;
+                    }
+                    CrawlMessage::Error(err) => {
+                        warn!("Crawler error: {:?}", err);
+                    }
+                    CrawlMessage::Done => {
+                        info!("Crawling done!");
+                        break;
+                    }
+                }
             }
-        };
-        if entry.file_type().map_or(false, |ft| ft.is_dir()) {
-            let path = entry.path();
-            // If path/.git exists or path is a .git folder
-            if path.join(".git").is_dir() {
-                // Found a Git repo. Now let's gather info
-                info!("Found git repo at {:?}", path);
-                // You could call `git remote -v` or parse .git/config
-                // e.g. using tokio::process::Command
-                // or using the `git2` crate
 
-                // For example, let's do a quick Command approach:
-                gather_repo_info(path).await?;
+            // Optionally wait for the crawl task to exit
+            let res = handle.await?;
+            if let Err(e) = res {
+                // handle the error from inside the spawned task
+                warn!("Crawler task error: {}", e);
             }
         }
     }
 
     Ok(())
 }
-
-
-use tokio::process::Command;
-use std::str;
-
-// async fn get_origin_url(repo_path: &Path) -> Result<String> {
-//     let output = Command::new("git")
-//         .arg("-C")
-//         .arg(repo_path)
-//         .arg("remote")
-//         .arg("get-url")
-//         .arg("origin")
-//         .output()
-//         .await?;
-//     if !output.status.success() {
-//         return Err(color_eyre::eyre::eyre!(
-//             "git command failed for {:?}",
-//             repo_path
-//         ));
-//     }
-//     let stdout = str::from_utf8(&output.stdout)?.trim().to_string();
-//     Ok(stdout)
-// }
-
-
-// async fn gather_repo_info(repo_path: &Path) -> Result<RepoInfo> {
-//     // Some pseudo-code:
-//     // let output = tokio::process::Command::new("git")
-//     //     .arg("-C")
-//     //     .arg(repo_path)
-//     //     .arg("remote")
-//     //     .arg("-v")
-//     //     .output()
-//     //     .await?;
-//     // parse the lines to find the remote name + url
-//     // ...
-//     Ok(RepoInfo {
-//         remote_urls: vec![],
-//         // ...
-//     })
-// }
-
-// struct RepoInfo {
-//     remote_urls: Vec<String>,
-//     // ...
-// }
