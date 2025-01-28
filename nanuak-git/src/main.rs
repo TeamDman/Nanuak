@@ -84,13 +84,37 @@ async fn crawl_git_repos(start_dir: PathBuf) -> Result<()> {
                 // or using the `git2` crate
 
                 // For example, let's do a quick Command approach:
-                // gather_repo_info(path).await?;
+                gather_repo_info(path).await?;
             }
         }
     }
 
     Ok(())
 }
+
+
+use tokio::process::Command;
+use std::str;
+
+// async fn get_origin_url(repo_path: &Path) -> Result<String> {
+//     let output = Command::new("git")
+//         .arg("-C")
+//         .arg(repo_path)
+//         .arg("remote")
+//         .arg("get-url")
+//         .arg("origin")
+//         .output()
+//         .await?;
+//     if !output.status.success() {
+//         return Err(color_eyre::eyre::eyre!(
+//             "git command failed for {:?}",
+//             repo_path
+//         ));
+//     }
+//     let stdout = str::from_utf8(&output.stdout)?.trim().to_string();
+//     Ok(stdout)
+// }
+
 
 // async fn gather_repo_info(repo_path: &Path) -> Result<RepoInfo> {
 //     // Some pseudo-code:
