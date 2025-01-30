@@ -1,5 +1,5 @@
 use crate::crawl_message::CrawlMessage;
-use crate::gather_repo_info::gather_repo_info;
+use crate::get_remotes::get_remotes;
 use color_eyre::eyre::Result;
 use eyre::eyre;
 use ignore::WalkBuilder;
@@ -46,24 +46,12 @@ pub fn crawl_repos(
                 let path = entry.path();
                 // If path/.git exists, we consider it a Git repo
                 if path.join(".git").is_dir() {
-                    // Now gather info, e.g. find the origin:
-                    match gather_repo_info(path).await {
-                        Ok(origin) => {
-                            let _ = tx
-                                .send(CrawlMessage::FoundRepo {
-                                    path: path.to_path_buf(),
-                                    remotes: origin,
-                                })
-                                .await;
-                        }
-                        Err(e) => {
-                            let _ = tx
-                                .send(CrawlMessage::Error(
-                                    e.wrap_err(eyre!("Error in gather_repo_info for {:?}", path)),
-                                ))
-                                .await;
-                        }
-                    }
+                    let remotes = get_remotes(path).await?;
+                    tx.send(CrawlMessage::FoundRepo {
+                        path: path.to_path_buf(),
+                        remotes,
+                    })
+                    .await?;
                 }
             }
         }

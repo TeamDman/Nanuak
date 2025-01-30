@@ -1,11 +1,14 @@
+#![feature(try_blocks)]
 pub mod actions;
 pub mod crawl_message;
 pub mod crawl_repos;
 pub mod upsert_cloned_repos;
-pub mod gather_repo_info;
+pub mod get_remotes;
 pub mod get_repo_list_from_db;
 pub mod pick_repo;
-pub mod get_origin_url_from_remotes;
+pub mod repo_manifest;
+pub mod get_github_details;
+pub mod pick_remote;
 
 use clap::Parser;
 use clap::Subcommand;

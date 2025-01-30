@@ -2,7 +2,7 @@ use color_eyre::eyre::Result;
 use eyre::eyre;
 use std::path::Path;
 
-pub async fn gather_repo_info(repo_path: &Path) -> Result<String> {
+pub async fn get_remotes(repo_path: &Path) -> Result<String> {
     // For demonstration, we fetch "origin" via `git remote get-url origin`
     use std::str;
     use tokio::process::Command;
@@ -23,7 +23,7 @@ pub async fn gather_repo_info(repo_path: &Path) -> Result<String> {
             String::from_utf8_lossy(&output.stderr)
         )
         .wrap_err(color_eyre::eyre::eyre!(
-            "git command failed for {:?}",
+            "getting remotes failed for {:?}",
             repo_path
         )));
     }
