@@ -17,3 +17,4 @@ r2d2 = { workspace = true }
 futures = { workspace = true }
 itertools = { workspace = true }
 chrono = { workspace = true }
+cloud_terrastodon_core_user_input = { workspace = true }

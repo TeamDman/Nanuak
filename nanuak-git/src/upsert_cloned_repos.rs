@@ -1,7 +1,7 @@
 use diesel::upsert::excluded;
 use chrono::Utc;
 use diesel::prelude::*;
-use nanuak_schema::git_models::NewClonedRepo;
+use nanuak_schema::git_models::ClonedRepo;
 
 pub fn upsert_cloned_repos(
     conn: &mut PgConnection,
@@ -12,7 +12,7 @@ pub fn upsert_cloned_repos(
     for (local_path, origin_url) in discovered {
         let now = Utc::now().naive_utc();
 
-        let new_row = NewClonedRepo {
+        let new_row = ClonedRepo {
             path: local_path.to_string_lossy().to_string(),
             remotes: origin_url.clone(),
             seen: now,

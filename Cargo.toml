@@ -40,6 +40,7 @@ tower = "0.4"
 tower-http = {version = "0.4", features=["fs"]}
 uuid = "1.4"
 mime = "0.3"
+cloud_terrastodon_core_user_input = { git = "https://github.com/aafc-cloud/Cloud-Terrastodon/", rev = "5ea41e5fa70a8f0e83119bec846c28d49859be6a" }
 
 
 # Optimized for bundle size. If you want faster builds comment out/delete this section.

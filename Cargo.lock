@@ -325,6 +325,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
+name = "cloud_terrastodon_core_user_input"
+version = "0.1.0"
+source = "git+https://github.com/aafc-cloud/Cloud-Terrastodon/?rev=5ea41e5fa70a8f0e83119bec846c28d49859be6a#5ea41e5fa70a8f0e83119bec846c28d49859be6a"
+dependencies = [
+ "eyre",
+ "indexmap",
+ "itertools 0.12.1",
+ "tokio",
+]
+
+[[package]]
 name = "color-eyre"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1159,6 +1170,15 @@ checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 
 [[package]]
 name = "itertools"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
@@ -1327,12 +1347,13 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "cloud_terrastodon_core_user_input",
  "color-eyre",
  "diesel",
  "eyre",
  "futures",
  "ignore",
- "itertools",
+ "itertools 0.13.0",
  "nanuak-schema",
  "r2d2",
  "tokio",
@@ -1349,7 +1370,7 @@ dependencies = [
  "eyre",
  "ignore",
  "indexmap",
- "itertools",
+ "itertools 0.13.0",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1375,7 +1396,7 @@ dependencies = [
  "diesel_full_text_search",
  "eyre",
  "futures",
- "itertools",
+ "itertools 0.13.0",
  "nanuak-schema",
  "ollama-rs",
  "pgvector",
@@ -1400,7 +1421,7 @@ dependencies = [
  "diesel",
  "eyre",
  "futures",
- "itertools",
+ "itertools 0.13.0",
  "nanuak-schema",
  "r2d2",
  "reqwest",
