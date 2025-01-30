@@ -3,7 +3,7 @@ use diesel::PgConnection;
 use r2d2::Pool;
 use tracing::info;
 
-use crate::get_github_details::get_github_details;
+use crate::fetch_github_repo_details::fetch_github_repo_details;
 use crate::pick_remote::pick_remote;
 use crate::pick_repo::pick_repo;
 use crate::repo_manifest::RepoManifest;
@@ -18,7 +18,7 @@ pub async fn summarize_repos_action(
     info!("Summarizing repo: {:?}", repo);
 
     let remote = pick_remote(&repo.remotes)?;
-    let github_details = get_github_details(remote.1).await?;
+    let github_details = fetch_github_repo_details(remote.1).await?;
 
     let manifest = RepoManifest {
         github_details,

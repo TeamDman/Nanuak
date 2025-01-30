@@ -1,9 +1,9 @@
 use eyre::eyre;
 use tokio::process::Command;
 
-pub async fn get_github_details(github_repo: &str) -> eyre::Result<String> {
+pub async fn fetch_github_repo_details(github_repo: &str) -> eyre::Result<String> {
     let output = Command::new("gh")
-        .args(["repo", "view", github_repo, "--json", "description,createdAt,languages,updatedAt,stargazerCount,watchers,licenseInfo,homepageUrl,primaryLanguage,projects,issues,pullRequests,milestones,forkCount"])
+        .args(["repo", "view", github_repo, "--json", "description,createdAt,languages,updatedAt,stargazerCount,watchers,licenseInfo,homepageUrl,primaryLanguage,projects,issues,pullRequests,milestones,forkCount,assignableUsers"])
         .output()
         .await?;
     if !output.status.success() {
@@ -30,7 +30,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_github_details() -> Result<()> {
         let github_repo = "rust-lang/rust";
-        let output = get_github_details(github_repo).await?;
+        let output = fetch_github_repo_details(github_repo).await?;
         println!("{}", output);
         assert!(!output.is_empty());
         Ok(())
