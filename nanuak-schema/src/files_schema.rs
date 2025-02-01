@@ -12,6 +12,7 @@ pub mod files {
             model -> Text,
             caption -> Text,
             created_at -> Timestamp,
+            prompt -> Nullable<Text>,
         }
     }
 
@@ -57,6 +58,7 @@ pub mod files {
             fulfilled_at -> Nullable<Timestamp>,
             model -> Nullable<Text>,
             error_message -> Nullable<Text>,
+            prompt -> Nullable<Text>,
         }
     }
 
