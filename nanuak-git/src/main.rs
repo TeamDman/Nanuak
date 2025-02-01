@@ -7,7 +7,7 @@ pub mod get_remotes;
 pub mod get_repo_list_from_db;
 pub mod pick_repo;
 pub mod repo_manifest;
-pub mod get_github_details;
+pub mod fetch_github_repo_details;
 pub mod pick_remote;
 
 use clap::Parser;
