@@ -1,3 +1,4 @@
+print("Loading a bunch of imports...")
 import pillow_avif
 from pgvector.asyncpg.register import register_vector
 import asyncio
@@ -27,6 +28,7 @@ async def main():
     await register_vector(conn)
 
     # Load the models
+    print("Loading models")
     clip_model_name = "openai/clip-vit-base-patch32"
     clip_model = CLIPModel.from_pretrained(clip_model_name)
     clip_processor = CLIPProcessor.from_pretrained(clip_model_name)
@@ -37,6 +39,8 @@ async def main():
     blip_model_name = "Salesforce/blip-image-captioning-large"
     blip_processor = BlipProcessor.from_pretrained(blip_model_name)
     blip_model = BlipForConditionalGeneration.from_pretrained(blip_model_name).to(device).eval()
+
+    print("Beginning fulfillment loop")
 
     while True:
         # 1) Find an unfulfilled request
@@ -105,7 +109,7 @@ async def main():
             print(f"Error processing request {req_id}: {e}")
             await conn.execute("""
                 UPDATE files.requests
-                SET error_message = $2
+                SET fulfilled_at = now(), error_message = $2
                 WHERE id = $1
             """, req_id, str(e))
 
