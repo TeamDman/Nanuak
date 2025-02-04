@@ -1,0 +1,697 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'nanuak_schema'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=nanuak-schema"
+                ],
+                "filter": {
+                    "name": "nanuak_schema",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'nanuak_youtube_populate_details'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "nanuak_youtube_populate_details",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'ahoy'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=ahoy",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "ahoy",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'ahoy'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=ahoy",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "ahoy",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'populate_categories'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=populate_categories",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "populate_categories",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'populate_categories'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=populate_categories",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "populate_categories",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'populate_videos'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=populate_videos",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "populate_videos",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'populate_videos'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=populate_videos",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "populate_videos",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'single_video_details'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=single_video_details",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "single_video_details",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'single_video_details'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=single_video_details",
+                    "--package=nanuak-youtube-populate-details"
+                ],
+                "filter": {
+                    "name": "single_video_details",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'nanuak-youtube-takeout-ingest'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=nanuak-youtube-takeout-ingest",
+                    "--package=nanuak-youtube-takeout-ingest"
+                ],
+                "filter": {
+                    "name": "nanuak-youtube-takeout-ingest",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'nanuak-youtube-takeout-ingest'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=nanuak-youtube-takeout-ingest",
+                    "--package=nanuak-youtube-takeout-ingest"
+                ],
+                "filter": {
+                    "name": "nanuak-youtube-takeout-ingest",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'print_table_name'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=print_table_name",
+                    "--package=nanuak-youtube-takeout-ingest"
+                ],
+                "filter": {
+                    "name": "print_table_name",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'print_table_name'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=print_table_name",
+                    "--package=nanuak-youtube-takeout-ingest"
+                ],
+                "filter": {
+                    "name": "print_table_name",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'nanuak_youtube_embeddings'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "nanuak_youtube_embeddings",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'populate_video_embeddings'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=populate_video_embeddings",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "populate_video_embeddings",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'populate_video_embeddings'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=populate_video_embeddings",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "populate_video_embeddings",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'search_video_embeddings'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=search_video_embeddings",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "search_video_embeddings",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'search_video_embeddings'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=search_video_embeddings",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "search_video_embeddings",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'duration_embedding'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=duration_embedding",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "duration_embedding",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'duration_embedding'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=duration_embedding",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "duration_embedding",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'list_videos'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=list_videos",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "list_videos",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'list_videos'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=list_videos",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "list_videos",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug example 'ollama'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--example=ollama",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "ollama",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in example 'ollama'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--example=ollama",
+                    "--package=nanuak-youtube-embeddings"
+                ],
+                "filter": {
+                    "name": "ollama",
+                    "kind": "example"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'nanuak-files-index-request'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=nanuak-files-index-request",
+                    "--package=nanuak-files-index-request"
+                ],
+                "filter": {
+                    "name": "nanuak-files-index-request",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'nanuak-files-index-request'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=nanuak-files-index-request",
+                    "--package=nanuak-files-index-request"
+                ],
+                "filter": {
+                    "name": "nanuak-files-index-request",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'nanuak-prompting'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=nanuak-prompting",
+                    "--package=nanuak-prompting"
+                ],
+                "filter": {
+                    "name": "nanuak-prompting",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'nanuak-prompting'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=nanuak-prompting",
+                    "--package=nanuak-prompting"
+                ],
+                "filter": {
+                    "name": "nanuak-prompting",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'nanuak-files-ui'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=nanuak-files-ui",
+                    "--package=nanuak-files-ui"
+                ],
+                "filter": {
+                    "name": "nanuak-files-ui",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'nanuak-files-ui'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=nanuak-files-ui",
+                    "--package=nanuak-files-ui"
+                ],
+                "filter": {
+                    "name": "nanuak-files-ui",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'nanuak-git'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=nanuak-git",
+                    "--package=nanuak-git"
+                ],
+                "filter": {
+                    "name": "nanuak-git",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'nanuak-git'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=nanuak-git",
+                    "--package=nanuak-git"
+                ],
+                "filter": {
+                    "name": "nanuak-git",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'nanuak-memes'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=nanuak-memes",
+                    "--package=nanuak-memes"
+                ],
+                "filter": {
+                    "name": "nanuak-memes",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'nanuak-memes'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=nanuak-memes",
+                    "--package=nanuak-memes"
+                ],
+                "filter": {
+                    "name": "nanuak-memes",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'nanuak-vtt'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=nanuak-vtt",
+                    "--package=nanuak-vtt"
+                ],
+                "filter": {
+                    "name": "nanuak-vtt",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--file",
+                "C:\\Users\\TeamD\\OneDrive\\Documents\\Ideas\\YouTube\\Downloads\\2025\\02\\03\\Embedded Rust setup explained [TOAynddiu5M].en.vtt"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'nanuak-vtt'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=nanuak-vtt",
+                    "--package=nanuak-vtt"
+                ],
+                "filter": {
+                    "name": "nanuak-vtt",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}
