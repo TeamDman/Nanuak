@@ -1432,6 +1432,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanuak-qwen"
+version = "0.1.0"
+
+[[package]]
 name = "nanuak-schema"
 version = "0.1.0"
 dependencies = [

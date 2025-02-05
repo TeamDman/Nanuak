@@ -1,0 +1,16 @@
+[project]
+name = "nanuak-qwen"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "accelerate>=1.3.0",
+    "qwen-vl-utils[decord]>=0.0.10",
+    "torch>=2.5.1",
+    "torchvision>=0.20.1",
+    "transformers",
+]
+
+[tool.uv.sources]
+transformers = { git = "https://github.com/huggingface/transformers" }

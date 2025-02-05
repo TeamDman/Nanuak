@@ -6,7 +6,7 @@ members = [
     "nanuak-youtube-takeout-ingest",
     "nanuak-youtube-populate-details",
     "nanuak-youtube-embeddings",
-    "nanuak-files-index-request", "nanuak-prompting", "nanuak-files-ui", "nanuak-git", "nanuak-memes", "nanuak-vtt",
+    "nanuak-files-index-request", "nanuak-prompting", "nanuak-files-ui", "nanuak-git", "nanuak-memes", "nanuak-vtt", "nanuak-qwen",
 ]
 
 [workspace.dependencies]

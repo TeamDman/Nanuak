@@ -14,7 +14,7 @@ dependencies = [
     "torch>=2.5.1",
     "torchaudio>=2.5.1",
     "torchvision>=0.20.1",
-    "transformers>=4.47.1",
+    "transformers>=4.48.2",
     "pgvector>=0.3.6",
 ]
 
@@ -28,7 +28,7 @@ url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [tool.uv.workspace]
-members = ["nanuak-files-index-fulfill", "nanuak-files-search", "nanuak-whisper"]
+members = ["nanuak-files-index-fulfill", "nanuak-files-search", "nanuak-whisper", "nanuak-qwen"]
 
 [dependency-groups]
 dev = [
