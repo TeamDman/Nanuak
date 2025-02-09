@@ -2,6 +2,7 @@ use clap::Parser;
 use color_eyre::eyre::Result;
 use color_eyre::eyre::WrapErr;
 use ignore::WalkBuilder;
+use itertools::Itertools;
 use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::fs::{self};
@@ -99,6 +100,9 @@ fn main() -> Result<()> {
             "WritePrompt" => {
                 write_prompt_file(&cli.output_file, &tracked_files)?;
                 open_in_editor(&cli.editor, &cli.output_file)?;
+            }
+            "AddCrate" => {
+                let cargo_home = std::env::args().get("CARGO_HOME");
             }
             "Quit" => break,
             _ => unreachable!(),

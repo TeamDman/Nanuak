@@ -1339,6 +1339,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanuak-cargo-home"
+version = "0.1.0"
+dependencies = [
+ "color-eyre",
+ "eyre",
+ "futures",
+ "itertools 0.13.0",
+ "tokio",
+]
+
+[[package]]
 name = "nanuak-files-index-request"
 version = "0.1.0"
 dependencies = [
@@ -1433,6 +1444,10 @@ dependencies = [
 
 [[package]]
 name = "nanuak-qwen"
+version = "0.1.0"
+
+[[package]]
+name = "nanuak-reflection"
 version = "0.1.0"
 
 [[package]]
