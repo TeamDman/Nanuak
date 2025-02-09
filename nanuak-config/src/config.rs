@@ -34,7 +34,7 @@ impl<P: SecretProvider> NanuakConfig<P> {
         // Try getting from the config
         if let Some(value) = self.inner.get(T::key()) {
             if let Some(value) = value.get("value") {
-                debug!("Found value in config: {:?}", value);
+                debug!("Found value in config");
                 let value = T::Value::deserialize(value.clone()).wrap_err(format!(
                     "Failed to deserialize configuration value for {}",
                     T::key()
