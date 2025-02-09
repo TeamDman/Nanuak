@@ -9,4 +9,5 @@ eyre.workspace = true
 futures.workspace = true
 itertools.workspace = true
 tokio.workspace = true
+tokio-stream = "0.1.17"
 tower = { workspace = true, features = ["futures-util", "tokio", "tokio-stream", "util"] }
