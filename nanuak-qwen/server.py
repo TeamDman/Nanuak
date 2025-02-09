@@ -9,7 +9,7 @@ app = Flask(__name__)
 model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
     "Qwen/Qwen2.5-VL-7B-Instruct",
     torch_dtype="auto",
-    device_map="auto"
+    device_map="cuda"
 )
 processor = AutoProcessor.from_pretrained(
     "Qwen/Qwen2.5-VL-7B-Instruct",
