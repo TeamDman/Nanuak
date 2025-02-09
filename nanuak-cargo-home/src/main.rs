@@ -2,20 +2,18 @@ use cloud_terrastodon_core_user_input::prelude::Choice;
 use cloud_terrastodon_core_user_input::prelude::FzfArgs;
 use cloud_terrastodon_core_user_input::prelude::pick_many;
 use eyre::Result;
-use futures::StreamExt;
+use futures::stream::StreamExt;
+use futures::stream::{self};
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::collections::hash_map::Entry;
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::time::SystemTime;
 use tokio::fs;
-use tokio::fs::DirEntry;
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc;
 use tokio::sync::mpsc::UnboundedSender;
-use tokio::sync::mpsc::{self};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Returns the Cargo home directory.
@@ -30,49 +28,52 @@ fn get_cargo_home() -> PathBuf {
     }
 }
 
-/// Asynchronously scans the given directory and sends each subdirectory (DirEntry)
-/// through the provided unbounded sender.
-async fn scan_dir(dir: PathBuf, tx: UnboundedSender<DirEntry>) -> Result<()> {
-    let mut read_dir = fs::read_dir(&dir).await?;
+/// Reads all entries in `dir` and, in parallel, checks if each one is a directory.
+/// If so, sends its path to `tx`.
+async fn scan_subdirs(dir: PathBuf, tx: UnboundedSender<PathBuf>) -> Result<()> {
+    let mut read_dir = fs::read_dir(dir).await?;
+    let mut entries = Vec::new();
+
+    // Collect all entries first.
     while let Some(entry) = read_dir.next_entry().await? {
-        let ft = entry.file_type().await?;
-        if ft.is_dir() {
-            // If sending fails (receiver dropped), break.
-            if tx.send(entry).is_err() {
-                break;
-            }
-        }
+        entries.push(entry);
     }
+
+    // Now, concurrently check file types.
+    stream::iter(entries)
+        .for_each_concurrent(None, |entry| {
+            let tx = tx.clone();
+            async move {
+                if let Ok(ft) = entry.file_type().await {
+                    if ft.is_dir() {
+                        let _ = tx.send(entry.path());
+                    }
+                }
+            }
+        })
+        .await;
+
     Ok(())
 }
 
-/// A struct to represent a crate directory along with the modification time of its parent registry directory.
+/// A struct to represent a crate directory along with its own modification time.
 struct CrateEntry {
-    entry: DirEntry,
-    parent_mod_time: SystemTime,
+    path: PathBuf,
+    crate_mod_time: SystemTime,
 }
 
-/// Asynchronously scans the given directory and sends each subdirectory as a CrateEntry,
-/// attaching the provided parent modification time.
-async fn scan_dir_with_parent(
-    dir: PathBuf,
-    parent_mod_time: SystemTime,
-    tx: UnboundedSender<CrateEntry>,
-) -> Result<()> {
-    let mut read_dir = fs::read_dir(&dir).await?;
-    while let Some(entry) = read_dir.next_entry().await? {
-        let ft = entry.file_type().await?;
-        if ft.is_dir() {
-            let crate_entry = CrateEntry {
-                entry,
-                parent_mod_time,
-            };
-            if tx.send(crate_entry).is_err() {
-                break;
-            }
-        }
+/// For a given crate directory path, fetch metadata and produce a CrateEntry.
+async fn load_crate_entry(path: PathBuf) -> Option<CrateEntry> {
+    match fs::metadata(&path).await {
+        Ok(md) => match md.modified() {
+            Ok(mtime) => Some(CrateEntry {
+                path,
+                crate_mod_time: mtime,
+            }),
+            Err(_) => None,
+        },
+        Err(_) => None,
     }
-    Ok(())
 }
 
 #[tokio::main]
@@ -88,66 +89,115 @@ async fn main() -> Result<()> {
     }
     println!("Registry src: {:?}", registry_src);
 
-    // 3. Create a channel to stream registry directories.
-    let (reg_tx, reg_rx): (UnboundedSender<DirEntry>, UnboundedReceiver<DirEntry>) =
-        mpsc::unbounded_channel();
+    // =============================
+    // Stage 1: discover registry subdirs
+    // =============================
+    let (reg_tx, reg_rx) = mpsc::unbounded_channel();
 
-    // Spawn a task to scan registry/src for registry directories.
-    tokio::spawn(scan_dir(registry_src, reg_tx));
+    // We'll spawn a task that scans the top-level registry_src directory.
+    // Each subdir is sent to reg_tx.
+    let registry_scan_task = tokio::spawn(async move {
+        if let Err(e) = scan_subdirs(registry_src, reg_tx).await {
+            eprintln!("Error scanning registry src: {}", e);
+        }
+    });
 
-    // Wrap the registry receiver as a stream, and for each registry directory,
-    // immediately fetch its modification time.
-    let reg_stream = UnboundedReceiverStream::new(reg_rx)
-        .then(|entry| async move {
-            let meta = entry.metadata().await?;
-            let modified = meta.modified()?;
-            Ok::<(DirEntry, SystemTime), eyre::Report>((entry, modified))
-        })
-        .filter_map(|res| async move { res.ok() });
+    // =============================
+    // Stage 2: discover crate directories
+    // =============================
+    let (crate_tx, crate_rx) = mpsc::unbounded_channel();
 
-    // 4. Create a channel for crate directories.
-    let (crate_tx, crate_rx): (UnboundedSender<CrateEntry>, UnboundedReceiver<CrateEntry>) =
-        mpsc::unbounded_channel();
+    // For each registry directory that appears in reg_rx, we scan for crate subdirs.
 
-    // Spawn a task that, for each registry directory as soon as it is received,
-    // spawns a new scanning task for its children (the crate directories), passing along the parent's modification time.
-    let registry_processing = tokio::spawn(async move {
-        reg_stream
-            .for_each_concurrent(None, |(reg_entry, mod_time)| {
-                let path = reg_entry.path();
-                let crate_tx = crate_tx.clone();
-                async move {
-                    if let Err(e) = scan_dir_with_parent(path, mod_time, crate_tx).await {
-                        eprintln!("Error scanning child directories: {}", e);
-                    }
+    let reg_stream = {
+        let crate_tx = crate_tx.clone();
+        UnboundedReceiverStream::new(reg_rx).for_each_concurrent(None, move |reg_path| {
+            let crate_tx = crate_tx.clone();
+            async move {
+                if let Err(e) = scan_subdirs(reg_path, crate_tx).await {
+                    eprintln!("Error scanning crate directories: {}", e);
                 }
-            })
-            .await;
-        // When done processing the registry stream, drop the crate sender.
+            }
+        })
+    };
+
+    // We'll spawn that so it runs concurrently
+    let registry_stream_task = tokio::spawn(async move {
+        reg_stream.await;
+        // After we've consumed all registry dirs, close crate_tx.
         drop(crate_tx);
     });
 
-    // 5. Wrap the crate receiver as a stream and collect all crate directories into a Vec.
-    let crate_processing = async {
-        let crate_stream = UnboundedReceiverStream::new(crate_rx);
-        // Collect all CrateEntry items.
-        crate_stream.collect::<Vec<CrateEntry>>().await
+    // =============================
+    // Stage 3: load crate entries
+    // =============================
+    let (entry_tx, entry_rx) = mpsc::unbounded_channel();
+
+    // For each path from crate_rx, load metadata in parallel.
+    let crate_stream = {
+        let entry_tx = entry_tx.clone();
+        UnboundedReceiverStream::new(crate_rx).for_each_concurrent(None, move |crate_path| {
+            let entry_tx = entry_tx.clone();
+            async move {
+                if let Some(ce) = load_crate_entry(crate_path).await {
+                    let _ = entry_tx.send(ce);
+                }
+            }
+        })
     };
 
-    // Run both tasks concurrently.
-    let (registry_result, mut crate_entries) = tokio::join!(registry_processing, crate_processing);
-    if let Err(e) = registry_result {
-        eprintln!("Error processing registry directories: {}", e);
+    let crate_stream_task = tokio::spawn(async move {
+        crate_stream.await;
+        drop(entry_tx);
+    });
+
+    // =============================
+    // Stage 4: collect final CrateEntry items
+    // =============================
+    // We'll spawn a task to collect all crate entries from entry_rx.
+    let collector_task = tokio::spawn(async move {
+        // As soon as entry_tx is dropped, the stream terminates.
+        let crate_entries: Vec<CrateEntry> = UnboundedReceiverStream::new(entry_rx).collect().await;
+        crate_entries
+    });
+
+    // Wait for all tasks to finish.
+    let (reg_scan_res, reg_stream_res, crate_stream_res, collector_res) = tokio::join!(
+        registry_scan_task,
+        registry_stream_task,
+        crate_stream_task,
+        collector_task
+    );
+
+    // Log any errors if the tasks themselves panicked or returned Err.
+    if let Err(e) = reg_scan_res {
+        eprintln!("Registry scan task error: {}", e);
+    }
+    if let Err(e) = reg_stream_res {
+        eprintln!("Registry stream task error: {}", e);
+    }
+    if let Err(e) = crate_stream_res {
+        eprintln!("Crate stream task error: {}", e);
     }
 
-    // 6. Resolve duplicates: group by the crate directory name and choose the one whose parent modification time is most recent.
-    // Build a HashMap where the key is the crate's file name and the value is the CrateEntry
+    // The collector task returns our final Vec<CrateEntry>.
+    let crate_entries = match collector_res {
+        Ok(entries) => entries,
+        Err(e) => {
+            eprintln!("Collector task error: {}", e);
+            vec![]
+        }
+    };
+
+    // 6. Resolve duplicates by crate directory name, picking the latest mod time.
     let mut crate_map: HashMap<OsString, CrateEntry> = HashMap::new();
     for ce in crate_entries {
-        let key = ce.entry.file_name();
-        match crate_map.entry(key.clone()) {
+        // Convert to an owned OsString so the sort later won't borrow from 'ce'.
+        let key = ce.path.file_name().unwrap_or_default().to_os_string();
+
+        match crate_map.entry(key) {
             Entry::Occupied(mut occ) => {
-                if ce.parent_mod_time > occ.get().parent_mod_time {
+                if ce.crate_mod_time > occ.get().crate_mod_time {
                     occ.insert(ce);
                 }
             }
@@ -157,37 +207,31 @@ async fn main() -> Result<()> {
         }
     }
 
-    // Now collect the unique crate entries.
     let mut unique_crates: Vec<CrateEntry> = crate_map.into_values().collect();
 
-    // Optional: If you need them in a sorted order, you can sort here.
-    unique_crates.sort_unstable_by_key(|ce| ce.entry.file_name());
-
-    let seen_names: HashSet<OsString> = unique_crates
-        .iter()
-        .map(|ce| ce.entry.file_name())
-        .collect();
-    assert_eq!(seen_names.len(), unique_crates.len());
+    // Convert file_name to an owned type in the sort closure to avoid lifetime errors
+    unique_crates.sort_unstable_by_key(|ce| ce.path.file_name().unwrap_or_default().to_os_string());
 
     println!(
         "Total unique crate directories found: {}",
         unique_crates.len()
     );
-    // 7. Use FZF (via pick_many) to let the user select one or more crates.
+
+    // 7. Let the user select crates with fzf.
     let chosen_crates = pick_many(FzfArgs {
         header: Some(format!("Found {} unique crates", unique_crates.len())),
         prompt: Some("Crate to summarize: ".to_string()),
         choices: unique_crates
             .into_iter()
             .map(|ce| Choice {
-                key: ce.entry.path().to_string_lossy().to_string(),
-                value: ce.entry,
+                key: ce.path.to_string_lossy().to_string(),
+                value: ce.path.clone(),
             })
             .collect_vec(),
     })?;
 
-    for crate_entry in chosen_crates {
-        println!("Selected crate: {:?}", crate_entry.path());
+    for crate_path in chosen_crates {
+        println!("Selected crate: {:?}", crate_path);
     }
 
     Ok(())
