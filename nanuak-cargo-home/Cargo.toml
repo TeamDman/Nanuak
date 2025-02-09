@@ -11,3 +11,4 @@ itertools.workspace = true
 tokio.workspace = true
 tokio-stream = "0.1.17"
 tower = { workspace = true, features = ["futures-util", "tokio", "tokio-stream", "util"] }
+cloud_terrastodon_core_user_input.workspace = true

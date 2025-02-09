@@ -1342,6 +1342,7 @@ dependencies = [
 name = "nanuak-cargo-home"
 version = "0.1.0"
 dependencies = [
+ "cloud_terrastodon_core_user_input",
  "color-eyre",
  "eyre",
  "futures",
