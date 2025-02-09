@@ -9,12 +9,15 @@ pub mod pick_repo;
 pub mod repo_manifest;
 pub mod fetch_github_repo_details;
 pub mod pick_remote;
+pub mod remotes;
+pub mod get_database_url;
 
 use clap::Parser;
 use clap::Subcommand;
 use color_eyre::eyre::Result;
 use diesel::r2d2::ConnectionManager;
 use diesel::PgConnection;
+use get_database_url::get_database_url;
 use r2d2::Pool;
 use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
@@ -62,8 +65,7 @@ async fn main() -> Result<()> {
     //
     // 1) Setup a DB pool
     //
-    let database_url =
-        std::env::var("DATABASE_URL").expect("DATABASE_URL must be set in env or .env");
+    let database_url = get_database_url().await?;
     let manager = ConnectionManager::<PgConnection>::new(&database_url);
     let pool = Pool::builder()
         .build(manager)

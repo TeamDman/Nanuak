@@ -18,3 +18,5 @@ futures = { workspace = true }
 itertools = { workspace = true }
 chrono = { workspace = true }
 cloud_terrastodon_core_user_input = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true

@@ -76,8 +76,7 @@ async fn load_crate_entry(path: PathBuf) -> Option<CrateEntry> {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+pub async fn get_crate_paths() -> eyre::Result<Vec<CrateEntry>> {
     // 1. Get Cargo home.
     let cargo_home = get_cargo_home();
     println!("Cargo home: {:?}", cargo_home);
@@ -211,17 +210,22 @@ async fn main() -> Result<()> {
 
     // Convert file_name to an owned type in the sort closure to avoid lifetime errors
     unique_crates.sort_unstable_by_key(|ce| ce.path.file_name().unwrap_or_default().to_os_string());
+    Ok(unique_crates)
+}
 
+#[tokio::main]
+async fn main() -> Result<()> {
+    let crates = get_crate_paths().await?;
     println!(
         "Total unique crate directories found: {}",
-        unique_crates.len()
+        crates.len()
     );
 
     // 7. Let the user select crates with fzf.
     let chosen_crates = pick_many(FzfArgs {
-        header: Some(format!("Found {} unique crates", unique_crates.len())),
+        header: Some(format!("Found {} unique crates", crates.len())),
         prompt: Some("Crate to summarize: ".to_string()),
-        choices: unique_crates
+        choices: crates
             .into_iter()
             .map(|ce| Choice {
                 key: ce.path.to_string_lossy().to_string(),

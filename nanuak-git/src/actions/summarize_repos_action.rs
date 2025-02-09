@@ -18,7 +18,7 @@ pub async fn summarize_repos_action(
     info!("Summarizing repo: {:?}", repo);
 
     let remote = pick_remote(&repo.remotes)?;
-    let github_details = fetch_github_repo_details(remote.1).await?;
+    let github_details = fetch_github_repo_details(&remote.url).await?;
 
     let manifest = RepoManifest {
         github_details,
