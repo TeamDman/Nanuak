@@ -1,12 +1,15 @@
 use crate::config_entry::ConfigField;
 use crate::secret_provider::SecretProvider;
+use async_trait::async_trait;
 use eyre::Context;
 use serde::Deserialize;
 
 #[derive(Debug)]
 pub struct EnvSecretProvider;
+
+#[async_trait]
 impl SecretProvider for EnvSecretProvider {
-    fn get<F: ConfigField>(&self) -> eyre::Result<Option<F::Value>> {
+    async fn get<F: ConfigField>(&self) -> eyre::Result<Option<F::Value>> {
         let Ok(env_val) = std::env::var(F::key()) else {
             return Ok(None);
         };

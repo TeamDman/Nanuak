@@ -16,6 +16,7 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["fmt", "env-filter"] }
 toml = "0.8.20"
+async-trait = "0.1.86"
 
 [dev-dependencies]
 open = "5.3.2"

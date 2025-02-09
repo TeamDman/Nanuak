@@ -13,7 +13,7 @@ use tracing::warn;
 
 use crate::config_entry::ConfigField;
 use crate::dirs::get_config_path;
-use crate::secret_provider::DefaultSecretProvider;
+use crate::default_secret_provider::DefaultSecretProvider;
 use crate::secret_provider::SecretProvider;
 
 #[derive(Debug)]
@@ -33,21 +33,24 @@ impl<P: SecretProvider> NanuakConfig<P> {
 
         // Try getting from the config
         if let Some(value) = self.inner.get(T::key()) {
-            debug!("Found value in config: {:?}", value);
-            let cast = T::Value::deserialize(value.clone()).wrap_err(format!(
-                "Failed to deserialize configuration value for {}",
-                T::key()
-            ))?;
-            return Ok(Some(cast));
+            if let Some(value) = value.get("value") {
+                debug!("Found value in config: {:?}", value);
+                let value = T::Value::deserialize(value.clone()).wrap_err(format!(
+                    "Failed to deserialize configuration value for {}",
+                    T::key()
+                ))?;
+                return Ok(Some(value));
+            }
         }
 
         // Try getting from environment variables
         debug!("Config value wasn't present for {}, trying secret provider", T::key());
-        if let Some(value) = self.secret_provider.get::<T>()? {
+        if let Some(value) = self.secret_provider.get::<T>().await? {
             debug!("Config value supplied by secret provider {:?}: {}", &self.secret_provider, T::key());
 
             // update self
             self.set::<T>(&value).await?;
+            self.save().await?;
 
             // return the value
             return Ok(Some(value));
@@ -64,11 +67,24 @@ impl<P: SecretProvider> NanuakConfig<P> {
         T::Value: Serialize,
     {
         debug!("Setting config value for {}", T::key());
-        let toml_val = toml::Value::try_from(value).wrap_err(format!(
-            "Failed to convert value to toml::Value for {}",
-            T::key()
-        ))?;
-        self.inner.insert(T::key().to_string(), toml_val);
+        let Some(entry) = self.inner.get_mut(T::key()) else {
+            // If there’s no table yet for T::key(), create one
+            let mut new_table = toml::map::Map::new();
+            let toml_val = toml::Value::try_from(value).wrap_err(format!(
+                "Failed to convert value to toml::Value for {}",
+                T::key()
+            ))?;
+            new_table.insert("value".to_string(), toml_val);
+            self.inner.insert(T::key().to_string(), toml::Value::Table(new_table));
+            return Ok(());
+        };
+        // If an entry already exists, we expect it to be a Table so we can do [entry].value
+        if let Some(tbl) = entry.as_table_mut() {
+            tbl.insert("value".to_string(), toml::Value::try_from(value)?);
+        } else {
+            // If it’s not a table, you can decide how to handle or bail!()
+            eyre::bail!("Config entry {} is not a table", T::key());
+        }
         Ok(())
     }
 
