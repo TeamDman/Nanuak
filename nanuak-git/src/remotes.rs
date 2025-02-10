@@ -41,7 +41,8 @@ impl FromStr for RepoRemotes {
                     let usage = usage.strip_suffix(")").ok_or_eyre(eyre!(
                         "Expected remote usage to be wrapped in parens, got {usage:?}"
                     ))?;
-                    serde_json::from_str(usage)
+                    usage
+                        .parse()
                         .wrap_err(format!("Invalid remote usage, got {usage:?}"))?
                 };
                 RepoRemote {
@@ -93,6 +94,17 @@ impl std::fmt::Display for RemoteUsage {
         }
     }
 }
+impl FromStr for RemoteUsage {
+    type Err = eyre::ErrReport;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "fetch" => Ok(RemoteUsage::Fetch),
+            "push" => Ok(RemoteUsage::Push),
+            _ => Err(eyre!("Invalid remote usage: {:?}, expected \"fetch\" or \"push\"", s)),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct RepoRemote {
@@ -103,5 +115,44 @@ pub struct RepoRemote {
 impl std::fmt::Display for RepoRemote {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}\t{} ({})", self.name, self.url, self.usage)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_repo_remotes_from_str() {
+        let input = "origin	https://github.com/TeamDman/Nanuak.git (fetch)
+origin	https://github.com/TeamDman/Nanuak.git (push)";
+        let expected = RepoRemotes(vec![
+            RepoRemote {
+                name: "origin".to_string(),
+                url: "https://github.com/TeamDman/Nanuak.git".to_string(),
+                usage: RemoteUsage::Fetch,
+            },
+            RepoRemote {
+                name: "origin".to_string(),
+                url: "https://github.com/TeamDman/Nanuak.git".to_string(),
+                usage: RemoteUsage::Push,
+            },
+        ]);
+        let actual: RepoRemotes = input.parse().unwrap();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn parse_remote_usage() {
+        assert_eq!(
+            serde_json::from_str::<RemoteUsage>(r#""fetch""#).unwrap(),
+            RemoteUsage::Fetch
+        );
+        assert_eq!(
+            serde_json::from_str::<RemoteUsage>(r#""push""#).unwrap(),
+            RemoteUsage::Push
+        );
+        let e = "invalid".parse::<RemoteUsage>().unwrap_err();
+        println!("{e}");
     }
 }
