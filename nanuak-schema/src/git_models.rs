@@ -1,6 +1,6 @@
 use crate::git::cloned_repos;
-use diesel::prelude::*;
 use chrono::NaiveDateTime;
+use diesel::prelude::*;
 
 #[derive(Debug, Insertable, Queryable, Selectable)]
 #[diesel(table_name = cloned_repos)]

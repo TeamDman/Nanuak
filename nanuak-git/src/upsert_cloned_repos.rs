@@ -1,6 +1,6 @@
-use diesel::upsert::excluded;
 use chrono::Utc;
 use diesel::prelude::*;
+use diesel::upsert::excluded;
 use nanuak_schema::git_models::ClonedRepo;
 
 pub fn upsert_cloned_repos(
@@ -17,7 +17,7 @@ pub fn upsert_cloned_repos(
             remotes: origin_url.clone(),
             seen: now,
         };
-        
+
         diesel::insert_into(cr::cloned_repos)
             .values(&new_row)
             .on_conflict(cr::path) // path is PK

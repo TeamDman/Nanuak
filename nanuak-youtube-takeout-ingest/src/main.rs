@@ -35,7 +35,12 @@ async fn main() -> Result<()> {
     // Parse command-line arguments
     let args = Args::parse();
 
-    let database_url = DatabasePassword::format_url(&NanuakConfig::acquire().await?.get::<DatabasePassword>().await?);
+    let database_url = DatabasePassword::format_url(
+        &NanuakConfig::acquire()
+            .await?
+            .get::<DatabasePassword>()
+            .await?,
+    );
 
     // Establish a database connection pool
     let manager = ConnectionManager::<PgConnection>::new(database_url);
@@ -91,7 +96,10 @@ async fn main() -> Result<()> {
                 }
                 success_count += 1;
             }
-            info!("Successfully inserted {} entries, some duplicates may have been ignored", success_count);
+            info!(
+                "Successfully inserted {} entries, some duplicates may have been ignored",
+                success_count
+            );
         }
     }
 

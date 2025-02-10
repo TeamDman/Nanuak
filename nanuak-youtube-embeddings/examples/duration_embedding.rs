@@ -11,7 +11,23 @@ async fn main() {
 
     // Define the duration times and words
     let duration_times = [
-        "00:07", "01:00", "02:00", "03:00", "03:30", "04:00", "05:00", "1:23:00", "45:13", "27:25","00:00:05","1m3s","27s","50s","5m","5 minutes 7 seconds","1 hours 4 minutes 21 seconds"
+        "00:07",
+        "01:00",
+        "02:00",
+        "03:00",
+        "03:30",
+        "04:00",
+        "05:00",
+        "1:23:00",
+        "45:13",
+        "27:25",
+        "00:00:05",
+        "1m3s",
+        "27s",
+        "50s",
+        "5m",
+        "5 minutes 7 seconds",
+        "1 hours 4 minutes 21 seconds",
     ];
     let duration_words = [
         "short",

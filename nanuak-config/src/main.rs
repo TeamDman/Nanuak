@@ -1,8 +1,8 @@
 use nanuak_config::config::NanuakConfig;
 use nanuak_config::db_url::DatabasePassword;
 use tracing::info;
-use tracing_subscriber::EnvFilter;
 use tracing::level_filters::LevelFilter;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 pub async fn main() -> eyre::Result<()> {

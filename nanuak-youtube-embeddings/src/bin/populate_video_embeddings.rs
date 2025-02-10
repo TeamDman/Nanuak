@@ -7,11 +7,14 @@ use diesel::r2d2::Pool;
 use itertools::Itertools;
 use nanuak_schema::youtube::video_embeddings_bge_m3;
 use nanuak_youtube_embeddings::count_videos_needing_embeddings;
-use nanuak_youtube_embeddings::{load_videos_needing_embeddings, VideoWithLatestWatch};
+use nanuak_youtube_embeddings::load_videos_needing_embeddings;
+use nanuak_youtube_embeddings::VideoWithLatestWatch;
 use ollama_rs::generation::embeddings::request::GenerateEmbeddingsRequest;
 use ollama_rs::Ollama;
 use std::time::Instant;
-use tracing::{debug, error, info};
+use tracing::debug;
+use tracing::error;
+use tracing::info;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 
@@ -39,7 +42,10 @@ struct Args {
 fn build_video_string(video: &VideoWithLatestWatch) -> String {
     let title = video.title.as_deref().unwrap_or("Unknown Title");
     let channel = video.channel_title.as_deref().unwrap_or("Unknown Channel");
-    let category = video.category_title.as_deref().unwrap_or("Unknown Category");
+    let category = video
+        .category_title
+        .as_deref()
+        .unwrap_or("Unknown Category");
     let description = video.description.as_deref().unwrap_or("No Description");
     let tags = video
         .tags
@@ -207,7 +213,10 @@ async fn main() -> Result<()> {
         if throughput > 0.0 && remaining > 0 {
             let eta_sec = remaining as f64 / throughput;
             let eta_min = eta_sec / 60.0;
-            info!("ETA: {:.2}s (~{:.1}m) at current throughput.", eta_sec, eta_min);
+            info!(
+                "ETA: {:.2}s (~{:.1}m) at current throughput.",
+                eta_sec, eta_min
+            );
         }
 
         // If optimize is set, attempt to adjust batch size based on throughput

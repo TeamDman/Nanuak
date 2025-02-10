@@ -3,21 +3,26 @@
 #[macro_use]
 extern crate diesel;
 
+use base64::engine::general_purpose;
+use base64::Engine as _;
 use clap::Parser;
 use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::r2d2::ConnectionManager;
+use diesel::r2d2::Pool;
 use dotenvy::dotenv;
+use open;
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 use std::env;
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::BufRead;
+use std::io::Write;
+use std::io::{self};
 use std::path::Path;
 use std::time::Duration;
-use walkdir::WalkDir;
-use base64::{engine::general_purpose, Engine as _};
-use open;
 use tokio;
+use walkdir::WalkDir;
 
 use std::error::Error;
 
@@ -51,7 +56,8 @@ mod models {
     }
 }
 
-use models::{Meme, NewMeme};
+use models::Meme;
+use models::NewMeme;
 use schema::memes::dsl::*;
 
 /// A simple interactive CLI for indexing and querying memes.
@@ -201,9 +207,7 @@ async fn index_folder(
                                 file_path: &file_path_str,
                                 description: &gen_resp.response,
                             };
-                            diesel::insert_into(memes)
-                                .values(&new_meme)
-                                .execute(conn)?;
+                            diesel::insert_into(memes).values(&new_meme).execute(conn)?;
                         }
                     }
                     println!("Indexed: {}", file_path_str);
@@ -219,7 +223,9 @@ async fn index_folder(
 
 /// Enter query mode: ask the user for a search term, list the top 5 matches (based on description),
 /// and let the user choose one to open using the default image viewer.
-fn query_memes(pool: &Pool<ConnectionManager<diesel::pg::PgConnection>>) -> Result<(), Box<dyn Error>> {
+fn query_memes(
+    pool: &Pool<ConnectionManager<diesel::pg::PgConnection>>,
+) -> Result<(), Box<dyn Error>> {
     println!("Entering query mode. Type 'q' to quit.");
     loop {
         print!("Enter search term: ");

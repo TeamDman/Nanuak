@@ -216,10 +216,7 @@ pub async fn get_crate_paths() -> eyre::Result<Vec<CrateEntry>> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let crates = get_crate_paths().await?;
-    println!(
-        "Total unique crate directories found: {}",
-        crates.len()
-    );
+    println!("Total unique crate directories found: {}", crates.len());
 
     // 7. Let the user select crates with fzf.
     let chosen_crates = pick_many(FzfArgs {

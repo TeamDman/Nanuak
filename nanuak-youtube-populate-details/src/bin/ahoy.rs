@@ -1,5 +1,6 @@
 use clap::Parser;
-use tracing::{debug, info};
+use tracing::debug;
+use tracing::info;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 /// Command-line arguments for the tool

@@ -8,8 +8,11 @@ use nanuak_config::db_url::DatabasePassword;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
-use tracing::{debug, error, info, warn};
+use tracing::debug;
+use tracing::error;
+use tracing::info;
 use tracing::level_filters::LevelFilter;
+use tracing::warn;
 use tracing_subscriber::EnvFilter;
 
 use nanuak_schema::youtube::video_categories;
@@ -73,7 +76,12 @@ async fn main() -> Result<()> {
 
     color_eyre::install()?;
     info!("Starting to populate categories");
-    let database_url = DatabasePassword::format_url(&NanuakConfig::acquire().await?.get::<DatabasePassword>().await?);
+    let database_url = DatabasePassword::format_url(
+        &NanuakConfig::acquire()
+            .await?
+            .get::<DatabasePassword>()
+            .await?,
+    );
     let manager = ConnectionManager::<PgConnection>::new(database_url);
     let pool = Pool::builder().build(manager)?;
     let mut conn = pool.get()?;
@@ -87,7 +95,10 @@ async fn main() -> Result<()> {
     }
 
     insert_video_categories(&mut conn, &categories)?;
-    info!("Inserted {} categories into the database.", categories.len());
+    info!(
+        "Inserted {} categories into the database.",
+        categories.len()
+    );
 
     Ok(())
 }
@@ -109,14 +120,16 @@ async fn fetch_video_categories(api_key: &str, region_code: &str) -> Result<Vec<
     debug!("Response:\n{}", serde_json::to_string_pretty(&data)?);
     let data: YouTubeCategoryResponse = serde_json::from_value(data)?;
 
-    let categories: Vec<NewVideoCategory> = data.items.into_iter().map(|item| {
-        NewVideoCategory {
+    let categories: Vec<NewVideoCategory> = data
+        .items
+        .into_iter()
+        .map(|item| NewVideoCategory {
             id: item.id,
             title: item.snippet.title,
             assignable: item.snippet.assignable,
             channel_id: item.snippet.channel_id,
-        }
-    }).collect();
+        })
+        .collect();
 
     Ok(categories)
 }

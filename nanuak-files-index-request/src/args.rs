@@ -1,4 +1,5 @@
-use clap::{Parser, ArgGroup};
+use clap::ArgGroup;
+use clap::Parser;
 use eyre::bail;
 use std::path::PathBuf;
 

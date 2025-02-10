@@ -1,6 +1,6 @@
 pub mod args;
-pub mod process_file;
 pub mod insert_request_if_needed;
+pub mod process_file;
 pub mod request_kind;
 
 use args::Args;
@@ -9,7 +9,8 @@ use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use process_file::process_file;
-use tracing::{debug, info};
+use tracing::debug;
+use tracing::info;
 
 fn init() -> eyre::Result<Args> {
     color_eyre::install()?;

@@ -101,7 +101,10 @@ impl FromStr for RemoteUsage {
         match s {
             "fetch" => Ok(RemoteUsage::Fetch),
             "push" => Ok(RemoteUsage::Push),
-            _ => Err(eyre!("Invalid remote usage: {:?}, expected \"fetch\" or \"push\"", s)),
+            _ => Err(eyre!(
+                "Invalid remote usage: {:?}, expected \"fetch\" or \"push\"",
+                s
+            )),
         }
     }
 }

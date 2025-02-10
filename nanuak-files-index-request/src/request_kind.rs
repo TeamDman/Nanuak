@@ -1,6 +1,6 @@
 pub enum RequestKind {
     Embed,
-    Caption
+    Caption,
 }
 impl std::fmt::Display for RequestKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

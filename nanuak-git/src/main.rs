@@ -2,15 +2,15 @@
 pub mod actions;
 pub mod crawl_message;
 pub mod crawl_repos;
-pub mod upsert_cloned_repos;
+pub mod fetch_github_repo_details;
+pub mod get_database_url;
 pub mod get_remotes;
 pub mod get_repo_list_from_db;
-pub mod pick_repo;
-pub mod repo_manifest;
-pub mod fetch_github_repo_details;
 pub mod pick_remote;
+pub mod pick_repo;
 pub mod remotes;
-pub mod get_database_url;
+pub mod repo_manifest;
+pub mod upsert_cloned_repos;
 
 use clap::Parser;
 use clap::Subcommand;
@@ -70,14 +70,14 @@ async fn main() -> Result<()> {
     let pool = Pool::builder()
         .build(manager)
         .expect("Failed to create r2d2 pool for PgConnection");
-    
+
     match cli.command {
         Commands::Crawl { dir } => {
             actions::crawl_repos_action::crawl_repos_action(dir, pool).await?;
-        },
+        }
         Commands::Summarize => {
             actions::summarize_repos_action::summarize_repos_action(pool).await?;
-        },
+        }
     }
 
     Ok(())

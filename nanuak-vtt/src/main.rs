@@ -1,5 +1,6 @@
 use clap::Parser;
-use eyre::{eyre, Context};
+use eyre::Context;
+use eyre::eyre;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;

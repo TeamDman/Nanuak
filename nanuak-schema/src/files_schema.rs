@@ -66,10 +66,5 @@ pub mod files {
     diesel::joinable!(embeddings_512 -> files (file_id));
     diesel::joinable!(requests -> files (file_id));
 
-    diesel::allow_tables_to_appear_in_same_query!(
-        captions,
-        embeddings_512,
-        files,
-        requests,
-    );
+    diesel::allow_tables_to_appear_in_same_query!(captions, embeddings_512, files, requests,);
 }

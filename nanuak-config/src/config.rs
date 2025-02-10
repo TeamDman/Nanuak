@@ -58,7 +58,10 @@ impl<P: SecretProvider> NanuakConfig<P> {
             self.save().await?;
             return Ok(value);
         } else {
-            bail!("No value found for {}, tried reading config and asking secret provider", T::key());
+            bail!(
+                "No value found for {}, tried reading config and asking secret provider",
+                T::key()
+            );
         }
     }
 

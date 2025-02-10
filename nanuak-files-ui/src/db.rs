@@ -1,5 +1,6 @@
 use diesel::pg::PgConnection;
-use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::r2d2::ConnectionManager;
+use diesel::r2d2::Pool;
 use eyre::Context;
 use nanuak_config::config::NanuakConfig;
 use nanuak_config::db_url::DatabasePassword;
@@ -10,10 +11,10 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn new() -> eyre::Result<Self> {        
+    pub async fn new() -> eyre::Result<Self> {
         let mut config = NanuakConfig::acquire().await?;
         let database_url = DatabasePassword::format_url(&config.get::<DatabasePassword>().await?);
-        
+
         let manager = ConnectionManager::<PgConnection>::new(database_url);
         let pool = Pool::builder()
             .build(manager)
