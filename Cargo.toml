@@ -54,7 +54,7 @@ mime = "0.3"
 cloud_terrastodon_core_user_input = { git = "https://github.com/aafc-cloud/Cloud-Terrastodon/", rev = "5ea41e5fa70a8f0e83119bec846c28d49859be6a" }
 # vtt = "1.0.0"
 # vtt = { path = "D:\\Repos\\rust\\vtt"}
-vtt = { git = "https://github.com/TeamDman/vtt", rev = "034d69bec6517ddcb9a191d2c6a247a87458ab64" }
+vtt = { git = "https://github.com/TeamDman/vtt", rev = "2fdea35ee297cf2b84db8dd156e34180bc8a4527" }
 
 
 # Optimized for bundle size. If you want faster builds comment out/delete this section.

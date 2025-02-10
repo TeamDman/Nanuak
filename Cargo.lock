@@ -2849,7 +2849,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "vtt"
 version = "1.0.0"
-source = "git+https://github.com/TeamDman/vtt?rev=034d69bec6517ddcb9a191d2c6a247a87458ab64#034d69bec6517ddcb9a191d2c6a247a87458ab64"
+source = "git+https://github.com/TeamDman/vtt?rev=2fdea35ee297cf2b84db8dd156e34180bc8a4527#2fdea35ee297cf2b84db8dd156e34180bc8a4527"
 dependencies = [
  "serde",
 ]
