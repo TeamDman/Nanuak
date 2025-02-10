@@ -1,12 +1,12 @@
 use nanuak_config::config::NanuakConfig;
-use nanuak_config::db_url::DatabaseUrl;
+use nanuak_config::db_url::DatabasePassword;
 use nanuak_config::dirs::get_config_path;
 
 #[tokio::test]
 pub async fn load_and_save_config() -> eyre::Result<()> {
     let mut config = NanuakConfig::acquire().await?;
     println!("Config is {:?}", config);
-    let db_url = config.get::<DatabaseUrl>().await?;
+    let db_url = config.get::<DatabasePassword>().await?;
     println!("DB url is {:?}", db_url);
     config.save().await?;
     Ok(())

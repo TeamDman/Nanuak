@@ -12,6 +12,7 @@ tracing-subscriber = { workspace = true }
 tokio = { workspace = true }
 ignore = { workspace = true }
 nanuak-schema = { workspace = true }
+nanuak-config = { workspace = true }
 diesel = { workspace = true }
 r2d2 = { workspace = true }
 futures = { workspace = true }

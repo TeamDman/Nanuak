@@ -1,9 +1,9 @@
 use crate::config_entry::ConfigField;
 
-pub struct DatabaseUrl;
-impl ConfigField for DatabaseUrl {
+pub struct DatabasePassword;
+impl ConfigField for DatabasePassword {
     type Value = String;
     fn key() -> &'static str {
-        "DATABASE_URL"
+        "DATABASE_PASSWORD"
     }
 }

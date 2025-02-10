@@ -1,5 +1,5 @@
 use nanuak_config::config::NanuakConfig;
-use nanuak_config::db_url::DatabaseUrl;
+use nanuak_config::db_url::DatabasePassword;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use tracing::level_filters::LevelFilter;
@@ -15,7 +15,7 @@ pub async fn main() -> eyre::Result<()> {
         )
         .init();
     let mut config = NanuakConfig::acquire().await?;
-    let db_url = config.get::<DatabaseUrl>().await?;
+    let db_url = config.get::<DatabasePassword>().await?;
     info!("Database URL: {:?}", db_url.len());
     Ok(())
 }
