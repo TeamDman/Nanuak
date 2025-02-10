@@ -1,31 +1,28 @@
-from pgvector.asyncpg.register import register_vector
-import os
-import asyncpg
-import uvicorn
 from fastapi import FastAPI, Query
-from pydantic import BaseModel
-from dotenv import load_dotenv
-import torch
-from transformers import CLIPProcessor, CLIPModel
-
 app = FastAPI()
 
 @app.on_event("startup")
 async def startup():
+    from dotenv import load_dotenv
     load_dotenv()
+    import os
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
         raise ValueError("DATABASE_URL must be set")
+    import asyncpg
     app.state.pool = await asyncpg.create_pool(database_url)
 
 
     # load model + processor for text embeddings
     global clip_model, clip_processor, device
+    import torch
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model_ckpt = "openai/clip-vit-base-patch32"
+    from transformers import CLIPProcessor, CLIPModel
     clip_model = CLIPModel.from_pretrained(model_ckpt).to(device)
     clip_processor = CLIPProcessor.from_pretrained(model_ckpt)
 
+from pydantic import BaseModel
 class SearchResult(BaseModel):
     file_id: int
     distance: float
@@ -39,6 +36,7 @@ async def search_embedding(q: str = Query(...)):
     """
     # 1) compute text embedding
     inputs = clip_processor(text=[q], return_tensors="pt").to(device)
+    import torch
     with torch.no_grad():
         text_embeds = clip_model.get_text_features(**inputs)
         text_embeds = text_embeds / text_embeds.norm(p=2, dim=-1, keepdim=True)
@@ -47,6 +45,7 @@ async def search_embedding(q: str = Query(...)):
     # 2) query top 10 from files.embeddings_512
     async with app.state.pool.acquire() as conn:
         # Register the VECTOR type
+        from pgvector.asyncpg.register import register_vector
         await register_vector(conn)
         
         sql = """
@@ -66,4 +65,5 @@ async def search_embedding(q: str = Query(...)):
 
 # if you want to run
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("search_app:app", host="127.0.0.1", port=9000, reload=True)
