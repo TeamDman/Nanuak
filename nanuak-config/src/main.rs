@@ -16,6 +16,6 @@ pub async fn main() -> eyre::Result<()> {
         .init();
     let mut config = NanuakConfig::acquire().await?;
     let db_url = config.get::<DatabaseUrl>().await?;
-    info!("Database URL: {:?}", db_url);
+    info!("Database URL: {:?}", db_url.len());
     Ok(())
 }

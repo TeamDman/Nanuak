@@ -22,7 +22,7 @@ pub async fn pick_secret() -> eyre::Result<Field> {
         prompt: None,
     })?;
     info!(
-        "You chose: {} - {} ({})",
+        "You chose: {} - {} (id is {})",
         chosen.vault.name, chosen.title, chosen.id
     );
     let item = op_item_get(&chosen.id).await?;

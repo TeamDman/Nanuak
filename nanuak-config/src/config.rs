@@ -9,11 +9,10 @@ use tokio::fs::OpenOptions;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
 use tracing::debug;
-use tracing::warn;
 
 use crate::config_entry::ConfigField;
-use crate::dirs::get_config_path;
 use crate::default_secret_provider::DefaultSecretProvider;
+use crate::dirs::get_config_path;
 use crate::secret_provider::SecretProvider;
 
 #[derive(Debug)]
@@ -25,40 +24,42 @@ pub struct NanuakConfig<P: SecretProvider> {
 
 impl<P: SecretProvider> NanuakConfig<P> {
     /// Retrieves the configuration value for the given entry.
-    pub async fn get<T: ConfigField>(&mut self) -> eyre::Result<Option<T::Value>>
+    pub async fn get<T: ConfigField>(&mut self) -> eyre::Result<T::Value>
     where
         T::Value: DeserializeOwned,
     {
         debug!("Getting config value for {}", T::key());
 
-        // Try getting from the config
-        if let Some(value) = self.inner.get(T::key()) {
-            if let Some(value) = value.get("value") {
-                debug!("Found value in config");
-                let value = T::Value::deserialize(value.clone()).wrap_err(format!(
-                    "Failed to deserialize configuration value for {}",
-                    T::key()
-                ))?;
-                return Ok(Some(value));
-            }
+        // Get or create the config entry as a table.
+        let entry = self
+            .inner
+            .entry(T::key().to_string())
+            .or_insert_with(|| toml::Value::Table(toml::Table::new()));
+        let table = entry
+            .as_table_mut()
+            .ok_or_else(|| eyre::eyre!("Config entry {} is not a table", T::key()))?;
+
+        // If a direct "value" exists, return it.
+        if let Some(val) = table.get("value") {
+            debug!("Found value in config");
+            let value = T::Value::deserialize(val.clone()).wrap_err(format!(
+                "Failed to deserialize configuration value for {}",
+                T::key()
+            ))?;
+            return Ok(value);
         }
 
-        // Try getting from environment variables
-        debug!("Config value wasn't present for {}, trying secret provider", T::key());
-        if let Some(value) = self.secret_provider.get::<T>().await? {
-            debug!("Config value supplied by secret provider {:?}: {}", &self.secret_provider, T::key());
-
-            // update self
-            self.set::<T>(&value).await?;
+        debug!("No direct value for {} - trying secret provider", T::key());
+        // Let the secret provider fill in the value (and update its metadata).
+        if let Some(value) = self.secret_provider.get::<T>(table).await? {
+            debug!("Secret provider supplied value for {}", T::key());
+            // Update the entry's "value" field and persist.
+            table.insert("value".to_string(), toml::Value::try_from(&value)?);
             self.save().await?;
-
-            // return the value
-            return Ok(Some(value));
+            return Ok(value);
         } else {
-            warn!("No value found for {} in config or secret provider", T::key());
+            bail!("No value found for {}, tried reading config and asking secret provider", T::key());
         }
-
-        Ok(None)
     }
 
     /// Sets the configuration value for the given entry.
@@ -75,7 +76,8 @@ impl<P: SecretProvider> NanuakConfig<P> {
                 T::key()
             ))?;
             new_table.insert("value".to_string(), toml_val);
-            self.inner.insert(T::key().to_string(), toml::Value::Table(new_table));
+            self.inner
+                .insert(T::key().to_string(), toml::Value::Table(new_table));
             return Ok(());
         };
         // If an entry already exists, we expect it to be a Table so we can do [entry].value
