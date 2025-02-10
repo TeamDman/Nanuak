@@ -13,6 +13,7 @@ clap = { workspace = true }
 diesel = { workspace = true }
 tokio = { workspace = true }
 nanuak-schema = { workspace = true }
+nanuak-config = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 url = { workspace = true}

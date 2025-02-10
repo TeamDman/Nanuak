@@ -20,6 +20,7 @@ r2d2 = { workspace = true }
 reqwest = { workspace = true }
 itertools = { workspace = true }
 futures = { workspace = true }
+nanuak-config = { workspace = true }
 
 # [[bin]]
 # name = "populate_videos"

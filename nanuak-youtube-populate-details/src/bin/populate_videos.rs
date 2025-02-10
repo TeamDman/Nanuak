@@ -6,10 +6,14 @@ use diesel::pg::data_types::PgInterval;
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
+use eyre::eyre;
 use futures::stream;
 use futures::StreamExt;
 use futures::TryStreamExt;
 use itertools::Itertools;
+use nanuak_config::config::NanuakConfig;
+use nanuak_config::db_url::DatabasePassword;
+use nanuak_config::youtube_api_key::YouTubeApiKey;
 use nanuak_schema::youtube;
 use reqwest::Client;
 use serde::Deserialize;
@@ -188,7 +192,6 @@ fn get_next_video_ids_to_fetch(
     use nanuak_schema::youtube::missing_videos as mv;
     use nanuak_schema::youtube::videos as v;
     use nanuak_schema::youtube::watch_history as w;
-    use nanuak_schema::youtube::{self};
 
     let ids = w::table
         .left_join(v::table.on(w::youtube_video_id.eq(v::video_id)))
@@ -236,62 +239,77 @@ fn insert_video_details(conn: &mut PgConnection, items: &[YouTubeItem]) -> Resul
     use youtube::video_topics::dsl as tp;
     use youtube::videos::dsl as v;
 
-    let new_videos: Vec<_> = items
-        .iter()
-        .map(|item| {
-            let caption_bool = match item.content_details.caption.as_deref() {
-                Some("true") => Some(true),
-                Some("false") => Some(false),
-                _ => None,
-            };
+    let mut new_videos = Vec::new();
+    for item in items {
+        let caption_bool = match item.content_details.caption.as_deref() {
+            Some("true") => Some(true),
+            Some("false") => Some(false),
+            _ => None,
+        };
 
-            let duration_interval =
-                parse_iso8601_duration_to_interval(&item.content_details.duration);
+        let duration_interval = parse_iso8601_duration_to_interval(&item.content_details.duration);
 
-            let view_count = item
-                .statistics
+        let view_count = item
+            .statistics
+            .as_ref()
+            .and_then(|s| s.view_count.as_ref())
+            .and_then(|vc| vc.parse::<i64>().ok());
+        let like_count = item
+            .statistics
+            .as_ref()
+            .and_then(|s| s.like_count.as_ref())
+            .and_then(|lc| lc.parse::<i64>().ok());
+        let comment_count = item
+            .statistics
+            .as_ref()
+            .and_then(|s| s.comment_count.as_ref())
+            .and_then(|cc| cc.parse::<i64>().ok());
+
+        let published_at = chrono::DateTime::parse_from_rfc3339(&item.snippet.published_at)
+            .ok()
+            .map(|dt| dt.with_timezone(&chrono::Utc));
+        let fetched_on = chrono::Utc::now().naive_utc();
+
+        let row = (
+            v::etag.eq(&item.etag),
+            v::video_id.eq(&item.id),
+            v::fetched_on.eq(fetched_on),
+            v::title.eq(&item.snippet.title),
+            v::description.eq(&item.snippet.description),
+            v::published_at.eq(published_at
+                .map(|d| d.naive_utc())
+                .ok_or(eyre!("Invalid date"))?),
+            v::channel_id.eq(&item.snippet.channel_id),
+            v::channel_title.eq(&item.snippet.channel_title),
+            v::category_id.eq(&item.snippet.category_id),
+            v::duration.eq(duration_interval.ok_or(eyre!("Invalid duration"))?),
+            v::caption.eq(caption_bool.ok_or(eyre!("Missing caption"))?),
+            v::definition.eq(item
+                .content_details
+                .definition
+                .as_deref()
+                .ok_or(eyre!("Missing definition"))?),
+            v::dimension.eq(item
+                .content_details
+                .dimension
+                .as_deref()
+                .ok_or(eyre!("Missing dimension"))?),
+            v::licensed_content.eq(item
+                .content_details
+                .licensed_content
+                .ok_or(eyre!("Missing licensed content"))?),
+            v::privacy_status.eq(item
+                .status
                 .as_ref()
-                .and_then(|s| s.view_count.as_ref())
-                .and_then(|vc| vc.parse::<i64>().ok());
-            let like_count = item
-                .statistics
-                .as_ref()
-                .and_then(|s| s.like_count.as_ref())
-                .and_then(|lc| lc.parse::<i64>().ok());
-            let comment_count = item
-                .statistics
-                .as_ref()
-                .and_then(|s| s.comment_count.as_ref())
-                .and_then(|cc| cc.parse::<i64>().ok());
-
-            let published_at = chrono::DateTime::parse_from_rfc3339(&item.snippet.published_at)
-                .ok()
-                .map(|dt| dt.with_timezone(&chrono::Utc));
-            let fetched_on = chrono::Utc::now().naive_utc();
-
-            (
-                v::etag.eq(&item.etag),
-                v::video_id.eq(&item.id),
-                v::fetched_on.eq(fetched_on),
-                v::title.eq(&item.snippet.title),
-                v::description.eq(&item.snippet.description),
-                v::published_at.eq(published_at.map(|d| d.naive_utc())),
-                v::channel_id.eq(&item.snippet.channel_id),
-                v::channel_title.eq(&item.snippet.channel_title),
-                v::category_id.eq(&item.snippet.category_id),
-                v::duration.eq(duration_interval),
-                v::caption.eq(caption_bool),
-                v::definition.eq(item.content_details.definition.as_deref()),
-                v::dimension.eq(item.content_details.dimension.as_deref()),
-                v::licensed_content.eq(item.content_details.licensed_content),
-                v::privacy_status.eq(item.status.as_ref().map(|s| s.privacy_status.as_str())),
-                v::tags.eq(item.snippet.tags.clone()),
-                v::view_count.eq(view_count),
-                v::like_count.eq(like_count),
-                v::comment_count.eq(comment_count),
-            )
-        })
-        .collect();
+                .map(|s| s.privacy_status.as_str())
+                .ok_or(eyre!("Missing privacy status"))?),
+            v::tags.eq(item.snippet.tags.clone()),
+            v::view_count.eq(view_count),
+            v::like_count.eq(like_count),
+            v::comment_count.eq(comment_count),
+        );
+        new_videos.push(row);
+    }
 
     diesel::insert_into(v::videos)
         .values(&new_videos)
@@ -386,12 +404,14 @@ async fn main() -> Result<()> {
     color_eyre::install()?;
     info!("Ahoy!");
 
-    let manager = ConnectionManager::<PgConnection>::new(std::env::var("DATABASE_URL")?);
+    let mut config = NanuakConfig::acquire().await?;
+    let database_url = DatabasePassword::format_url(&config.get::<DatabasePassword>().await?);
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
     let pool = Pool::builder().build(manager)?;
     let mut conn = pool.get()?;
     info!("Established database connection");
 
-    let api_key = std::env::var("YOUTUBE_API_KEY")?;
+    let api_key = config.get::<YouTubeApiKey>().await?;
 
     // If single_video_id is specified, fetch just that one.
     if let Some(vid) = args.single_video_id {

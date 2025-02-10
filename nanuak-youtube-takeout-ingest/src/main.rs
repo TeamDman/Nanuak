@@ -10,6 +10,8 @@ use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use entry::load_entries;
 use entry::Entry;
+use nanuak_config::config::NanuakConfig;
+use nanuak_config::db_url::DatabasePassword;
 use nanuak_schema::youtube::posts::dsl as posts_dsl;
 use nanuak_schema::youtube::search_history::dsl as search_dsl;
 use nanuak_schema::youtube::watch_history::dsl as watch_dsl;
@@ -33,8 +35,10 @@ async fn main() -> Result<()> {
     // Parse command-line arguments
     let args = Args::parse();
 
+    let database_url = DatabasePassword::format_url(&NanuakConfig::acquire().await?.get::<DatabasePassword>().await?);
+
     // Establish a database connection pool
-    let manager = ConnectionManager::<PgConnection>::new(std::env::var("DATABASE_URL")?);
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
     let pool = Pool::builder().build(manager)?;
     let mut conn = pool.get()?;
     info!("Established database connection");

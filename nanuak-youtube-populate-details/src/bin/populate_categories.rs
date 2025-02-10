@@ -3,6 +3,8 @@ use color_eyre::eyre::Result;
 use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
+use nanuak_config::config::NanuakConfig;
+use nanuak_config::db_url::DatabasePassword;
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
@@ -71,8 +73,8 @@ async fn main() -> Result<()> {
 
     color_eyre::install()?;
     info!("Starting to populate categories");
-
-    let manager = ConnectionManager::<PgConnection>::new(std::env::var("DATABASE_URL")?);
+    let database_url = DatabasePassword::format_url(&NanuakConfig::acquire().await?.get::<DatabasePassword>().await?);
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
     let pool = Pool::builder().build(manager)?;
     let mut conn = pool.get()?;
     info!("Established database connection");

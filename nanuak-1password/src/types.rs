@@ -33,7 +33,7 @@ pub struct Field {
     pub id: String,
     #[serde(rename = "type")]
     pub kind: String,
-    pub purpose: String,
+    pub purpose: Option<String>,
     pub label: String,
     pub value: Option<String>,
     pub reference: String,
