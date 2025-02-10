@@ -1,5 +1,5 @@
 if (-not (Test-Path -Path Env:\HF_TOKEN)) {
     Write-Host "[Get-HFToken] Make sure to dot-source this file!"
-    $token = op item get "Huggingface CLI (read)" --vault "Private" --field "credential"
+    $token = op read "op://Private/o24pfzdtppu4asfopqhzya5rg4/credential" --no-newline
     $env:HF_TOKEN = $token
 }
