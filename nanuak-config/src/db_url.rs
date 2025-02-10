@@ -7,3 +7,8 @@ impl ConfigField for DatabasePassword {
         "DATABASE_PASSWORD"
     }
 }
+impl DatabasePassword {
+    pub fn format_url(password: &str) -> String {
+        format!("postgres://postgres:{}@localhost/nanuak", password)
+    }
+}
