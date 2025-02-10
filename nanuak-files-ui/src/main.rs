@@ -24,6 +24,8 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    color_eyre::install()?;
+    
     // Parse CLI
     let args = Args::parse();
 
@@ -37,9 +39,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_default_directive(log_level.into())
         .from_env_lossy();
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
-
-    // Load .env if you like
-    dotenvy::dotenv().ok();
 
     // Create a shared db pool
     let state = AppState::new().await?;
