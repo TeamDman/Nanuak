@@ -1,6 +1,5 @@
 use diesel::insert_into;
 use diesel::prelude::*;
-use eyre::bail;
 use nanuak_schema::files_models::NewRequest;
 use tracing::info;
 

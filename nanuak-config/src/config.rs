@@ -56,7 +56,7 @@ impl<P: SecretProvider> NanuakConfig<P> {
             // Update the entry's "value" field and persist.
             table.insert("value".to_string(), toml::Value::try_from(&value)?);
             self.save().await?;
-            return Ok(value);
+            Ok(value)
         } else {
             bail!(
                 "No value found for {}, tried reading config and asking secret provider",

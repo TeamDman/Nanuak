@@ -57,9 +57,9 @@ async fn scan_subdirs(dir: PathBuf, tx: UnboundedSender<PathBuf>) -> Result<()> 
 }
 
 /// A struct to represent a crate directory along with its own modification time.
-struct CrateEntry {
-    path: PathBuf,
-    crate_mod_time: SystemTime,
+pub struct CrateEntry {
+    pub path: PathBuf,
+    pub crate_mod_time: SystemTime,
 }
 
 /// For a given crate directory path, fetch metadata and produce a CrateEntry.

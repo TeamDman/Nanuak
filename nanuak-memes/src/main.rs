@@ -10,18 +10,14 @@ use diesel::prelude::*;
 use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use dotenvy::dotenv;
-use open;
 use reqwest::Client;
 use serde::Deserialize;
 use serde::Serialize;
 use std::env;
 use std::fs;
-use std::io::BufRead;
 use std::io::Write;
 use std::io::{self};
-use std::path::Path;
 use std::time::Duration;
-use tokio;
 use walkdir::WalkDir;
 
 use std::error::Error;
@@ -42,6 +38,7 @@ mod schema {
 mod models {
     use super::schema::memes;
     #[derive(Queryable, Debug)]
+    #[allow(dead_code)]
     pub struct Meme {
         pub id: i32,
         pub file_path: String,

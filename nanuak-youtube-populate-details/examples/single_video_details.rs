@@ -14,7 +14,8 @@ struct YouTubeResponse {
 
 #[derive(Debug, Deserialize)]
 struct YouTubeItem {
-    contentDetails: ContentDetails,
+    #[serde(rename="contentDetails")]
+    content_details: ContentDetails,
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,7 +70,7 @@ async fn main() -> eyre::Result<()> {
     // Print the duration
     if let Some(item) = data.items.first() {
         info!("Video url: https://www.youtube.com/watch?v={}", video_id);
-        info!("Video duration: {}", item.contentDetails.duration);
+        info!("Video duration: {}", item.content_details.duration);
     } else {
         warn!("No items found in response");
     }

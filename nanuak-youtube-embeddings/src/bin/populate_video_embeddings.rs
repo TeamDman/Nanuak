@@ -226,14 +226,12 @@ async fn main() -> Result<()> {
                 best_batch_size = current_batch_size;
                 current_batch_size = (current_batch_size + increment).min(1000);
                 last_improved = true;
+            } else if last_improved {
+                current_batch_size = (current_batch_size - increment).max(10);
+                last_improved = false;
             } else {
-                if last_improved {
-                    current_batch_size = (current_batch_size - increment).max(10);
-                    last_improved = false;
-                } else {
-                    increment = (increment / 2).max(10);
-                    current_batch_size = best_batch_size;
-                }
+                increment = (increment / 2).max(10);
+                current_batch_size = best_batch_size;
             }
         }
 

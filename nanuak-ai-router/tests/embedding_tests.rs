@@ -12,7 +12,7 @@ async fn it_works() -> eyre::Result<()> {
     .await?;
     assert_eq!(embeddings.len(), 1);
     assert_eq!(
-        vec![embeddings.get(0).unwrap().0.len() as u16],
+        vec![embeddings.first().unwrap().0.len() as u16],
         WellKnownEmbeddingStrategy::BestLocal
             .get_model()
             .get_embedding_space()

@@ -42,7 +42,7 @@ pub fn crawl_repos(
                 }
             };
 
-            if entry.file_type().map_or(false, |ft| ft.is_dir()) {
+            if entry.file_type().is_some_and(|ft| ft.is_dir()) {
                 let path = entry.path();
                 // If path/.git exists, we consider it a Git repo
                 if path.join(".git").is_dir() {

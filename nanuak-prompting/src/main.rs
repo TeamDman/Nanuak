@@ -232,11 +232,9 @@ fn show_tracked_files(tracked_files: &HashSet<PathBuf>) -> eyre::Result<()> {
 /// Gathers unignored files by walking the directory using `ignore::WalkBuilder`.
 fn get_unignored_files(base_path: &Path) -> Result<Vec<PathBuf>> {
     let mut choices = Vec::new();
-    for result in WalkBuilder::new(base_path).build() {
-        if let Ok(entry) = result {
-            if entry.file_type().map_or(false, |ft| ft.is_file()) {
-                choices.push(entry.path().to_path_buf());
-            }
+    for entry in WalkBuilder::new(base_path).build().flatten() {
+        if entry.file_type().is_some_and(|ft| ft.is_file()) {
+            choices.push(entry.path().to_path_buf());
         }
     }
     Ok(choices)
@@ -264,7 +262,7 @@ fn write_prompt_file(output_file: &Path, tracked_files: &HashSet<PathBuf>) -> Re
         prompt_content.push_str(&format!("## {}\n", path.display()));
         prompt_content.push_str("````");
         prompt_content.push_str(&extension);
-        prompt_content.push_str("\n");
+        prompt_content.push('\n');
         prompt_content.push_str(&contents);
         prompt_content.push_str("\n`````````\n\n");
     }

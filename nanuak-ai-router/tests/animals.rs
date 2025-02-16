@@ -65,7 +65,7 @@ async fn main() -> eyre::Result<()> {
         .iter()
         .zip(similarities.into_iter())
         .sorted_by(|(_, (a, _)), (_, (b, _))| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal))
-        .map(|(word, (dist, embedding))| (word, dist))
+        .map(|(word, (dist, _))| (word, dist))
         .collect_vec();
     info!("Query: {query}");
     for (word, dist) in sorted_words {

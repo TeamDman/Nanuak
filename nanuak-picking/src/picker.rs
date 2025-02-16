@@ -12,11 +12,11 @@ pub async fn pick_many<T>(args: FzfArgs<Choice<T>>) -> eyre::Result<Vec<Choice<T
     let mut query = String::new();
     if let Some(header) = args.header {
         query.push_str(&header);
-        query.push_str("\n");
+        query.push('\n');
     }
     if let Some(prompt) = args.prompt {
         query.push_str(&prompt);
-        query.push_str("\n");
+        query.push('\n');
     }
 
     let mut to_embed = vec![EmbeddingPayload::Text(query.clone())];
