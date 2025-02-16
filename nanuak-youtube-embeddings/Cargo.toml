@@ -4,23 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = { workspace = true }
-color-eyre = { workspace = true }
-eyre = { workspace = true }
-serde = { workspace = true }
-serde_json = { workspace = true }
-clap = { workspace = true }
-diesel = { workspace = true }
-tokio = { workspace = true }
-nanuak-schema = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-url = { workspace = true }
-r2d2 = { workspace = true }
-reqwest = { workspace = true }
-itertools = { workspace = true }
-futures = { workspace = true }
-ollama-rs = { workspace = true }
-pgvector = { workspace = true }
-diesel_full_text_search = { workspace = true }
-simsimd = { workspace = true }
+chrono.workspace = true
+clap.workspace = true
+color-eyre.workspace = true
+diesel_full_text_search.workspace = true
+diesel.workspace = true
+eyre.workspace = true
+futures.workspace = true
+itertools.workspace = true
+nanuak-schema.workspace = true
+ollama-rs.workspace = true
+pgvector.workspace = true
+r2d2.workspace = true
+reqwest.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+simsimd.workspace = true
+tokio.workspace = true
+tracing-subscriber.workspace = true
+tracing.workspace = true
+url.workspace = true
