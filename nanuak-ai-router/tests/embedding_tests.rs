@@ -1,6 +1,6 @@
-use nanuak_embedding::embedding::Embedding;
-use nanuak_embedding::embedding_request::EmbeddingPayload;
-use nanuak_embedding::embedding_strategy::WellKnownEmbeddingStrategy;
+use nanuak_ai_router::embedding::Embedding;
+use nanuak_ai_router::embedding_request::EmbeddingPayload;
+use nanuak_ai_router::embedding_strategy::WellKnownEmbeddingStrategy;
 
 #[tokio::test]
 async fn it_works() -> eyre::Result<()> {

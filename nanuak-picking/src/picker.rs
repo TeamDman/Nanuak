@@ -1,9 +1,9 @@
 use cloud_terrastodon_core_user_input::prelude::Choice;
 use cloud_terrastodon_core_user_input::prelude::FzfArgs;
 use eyre::bail;
-use nanuak_embedding::embedding::Embedding;
-use nanuak_embedding::embedding_request::EmbeddingPayload;
-use nanuak_embedding::embedding_strategy::WellKnownEmbeddingStrategy;
+use nanuak_ai_router::embedding::Embedding;
+use nanuak_ai_router::embedding_request::EmbeddingPayload;
+use nanuak_ai_router::embedding_strategy::WellKnownEmbeddingStrategy;
 
 pub async fn pick<T>(_args: FzfArgs<T>) -> eyre::Result<T> {
     todo!()

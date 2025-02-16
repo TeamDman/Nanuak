@@ -1425,6 +1425,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanuak-ai-router"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "cloud_terrastodon_core_user_input",
+ "color-eyre",
+ "eyre",
+ "itertools 0.13.0",
+ "ollama-rs",
+ "reqwest 0.12.9",
+ "serde",
+ "serde_json",
+ "simsimd",
+ "strum",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uom",
+]
+
+[[package]]
 name = "nanuak-cargo-home"
 version = "0.1.0"
 dependencies = [
@@ -1459,27 +1480,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "nanuak-embedding"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "cloud_terrastodon_core_user_input",
- "color-eyre",
- "eyre",
- "itertools 0.13.0",
- "ollama-rs",
- "reqwest 0.12.9",
- "serde",
- "serde_json",
- "simsimd",
- "strum",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uom",
 ]
 
 [[package]]
@@ -1572,7 +1572,7 @@ dependencies = [
  "color-eyre",
  "eyre",
  "itertools 0.13.0",
- "nanuak-embedding",
+ "nanuak-ai-router",
  "strum",
  "tokio",
  "tracing",
