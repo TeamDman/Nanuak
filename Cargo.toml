@@ -16,6 +16,8 @@ members = [
     "nanuak-cargo-home",
     "nanuak-config",
     "nanuak-1password",
+    "nanuak-picking",
+    "nanuak-embedding",
 ]
 
 [workspace.dependencies]
@@ -27,6 +29,7 @@ eyre = "0.6.12"
 nanuak-schema = { path = "nanuak-schema" }
 nanuak-1password = { path = "nanuak-1password" }
 nanuak-config = { path = "nanuak-config" }
+nanuak-embedding = { path = "nanuak-embedding" }
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
 urlencoding = "2.1.3"
@@ -55,6 +58,7 @@ cloud_terrastodon_core_user_input = { git = "https://github.com/aafc-cloud/Cloud
 # vtt = "1.0.0"
 # vtt = { path = "D:\\Repos\\rust\\vtt"}
 vtt = { git = "https://github.com/TeamDman/vtt", rev = "2fdea35ee297cf2b84db8dd156e34180bc8a4527" }
+strum = { version = "0.27.0", features = ["derive"] }
 
 
 # Optimized for bundle size. If you want faster builds comment out/delete this section.

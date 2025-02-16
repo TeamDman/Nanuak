@@ -1,0 +1,22 @@
+[package]
+name = "nanuak-embedding"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cloud_terrastodon_core_user_input.workspace = true
+color-eyre.workspace = true
+eyre.workspace = true
+itertools.workspace = true
+serde_json.workspace = true
+serde.workspace = true
+strum.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+reqwest.workspace = true
+ollama-rs.workspace = true
+uom = "0.36.0"
+async-trait = "0.1.86"
+simsimd.workspace = true
+[dev-dependencies]
+tracing-subscriber.workspace = true

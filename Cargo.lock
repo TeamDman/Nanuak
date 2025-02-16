@@ -1462,6 +1462,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanuak-embedding"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "cloud_terrastodon_core_user_input",
+ "color-eyre",
+ "eyre",
+ "itertools 0.13.0",
+ "ollama-rs",
+ "reqwest 0.12.9",
+ "serde",
+ "serde_json",
+ "simsimd",
+ "strum",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uom",
+]
+
+[[package]]
 name = "nanuak-files-index-request"
 version = "0.1.0"
 dependencies = [
@@ -1541,6 +1562,21 @@ dependencies = [
  "serde_json",
  "tokio",
  "walkdir",
+]
+
+[[package]]
+name = "nanuak-picking"
+version = "0.1.0"
+dependencies = [
+ "cloud_terrastodon_core_user_input",
+ "color-eyre",
+ "eyre",
+ "itertools 0.13.0",
+ "nanuak-embedding",
+ "strum",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2788,6 +2824,16 @@ name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
+
+[[package]]
+name = "uom"
+version = "0.36.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffd36e5350a65d112584053ee91843955826bf9e56ec0d1351214e01f6d7cd9c"
+dependencies = [
+ "num-traits",
+ "typenum",
+]
 
 [[package]]
 name = "url"

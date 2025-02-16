@@ -1,0 +1,17 @@
+[package]
+name = "nanuak-picking"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+cloud_terrastodon_core_user_input.workspace = true
+tokio.workspace = true
+itertools.workspace = true
+strum.workspace = true
+color-eyre.workspace = true
+eyre.workspace = true
+nanuak-embedding.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tracing-subscriber.workspace = true
