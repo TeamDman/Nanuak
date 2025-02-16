@@ -33,12 +33,8 @@ impl Embedding {
         let embeddings = chosen_provider
             .get_embeddings(model.as_ref(), payloads)
             .await?;
-        if embeddings.len() != expected{
-            bail!(
-                "Expected {} embeddings, got {}",
-                expected,
-                embeddings.len()
-            );
+        if embeddings.len() != expected {
+            bail!("Expected {} embeddings, got {}", expected, embeddings.len());
         };
         Ok(embeddings)
     }

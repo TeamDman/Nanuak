@@ -3,8 +3,8 @@ use itertools::Itertools;
 use nanuak_ai_router::embedding::Embedding;
 use nanuak_ai_router::embedding_request::EmbeddingPayload;
 use nanuak_ai_router::embedding_strategy::WellKnownEmbeddingStrategy;
-use tracing::info;
 use strum::VariantNames;
+use tracing::info;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 

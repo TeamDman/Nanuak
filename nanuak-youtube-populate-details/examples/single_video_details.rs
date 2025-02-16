@@ -14,7 +14,7 @@ struct YouTubeResponse {
 
 #[derive(Debug, Deserialize)]
 struct YouTubeItem {
-    #[serde(rename="contentDetails")]
+    #[serde(rename = "contentDetails")]
     content_details: ContentDetails,
 }
 

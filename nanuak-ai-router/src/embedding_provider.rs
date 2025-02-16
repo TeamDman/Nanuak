@@ -8,18 +8,12 @@ use crate::model_attributes::ModelAttributes;
 
 #[async_trait]
 pub trait EmbeddingProvider {
-    async fn is_supported(
-        &self,
-        model: &dyn EmbeddingModel,
-    ) -> eyre::Result<bool>;
+    async fn is_supported(&self, model: &dyn EmbeddingModel) -> eyre::Result<bool>;
     async fn get_embeddings(
         &self,
         model: &dyn EmbeddingModel,
         payloads: Vec<EmbeddingPayload>,
     ) -> eyre::Result<Vec<Embedding>>;
-    async fn get_attributes(
-        &self,
-        model: &dyn EmbeddingModel,
-    ) -> eyre::Result<ModelAttributes>;
+    async fn get_attributes(&self, model: &dyn EmbeddingModel) -> eyre::Result<ModelAttributes>;
     fn get_residency(&self) -> Residency;
 }

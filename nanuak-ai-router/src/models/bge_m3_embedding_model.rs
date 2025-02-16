@@ -23,7 +23,7 @@ impl EmbeddingModel for BgeM3EmbeddingModel {
     fn name(&self) -> &'static str {
         "bge-m3:latest"
     }
-    
+
     fn get_context_size(&self) -> ContextSize {
         ContextSize(8192)
     }

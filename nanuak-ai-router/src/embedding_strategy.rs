@@ -7,8 +7,7 @@ pub enum WellKnownEmbeddingStrategy {
     BestRemote,
 }
 impl WellKnownEmbeddingStrategy {
-    pub fn get_model(&self) -> Box<dyn EmbeddingModel>
-    {
+    pub fn get_model(&self) -> Box<dyn EmbeddingModel> {
         match self {
             WellKnownEmbeddingStrategy::BestLocal => Box::new(BgeM3EmbeddingModel),
             WellKnownEmbeddingStrategy::BestRemote => todo!(),
