@@ -39,6 +39,12 @@ async fn main() -> Result<()> {
     let app = App::new(pool.clone(), &mut conn).await?;
     let result = app.run(&mut terminal, &mut conn).await;
 
+    // let result = tokio::task::block_in_place(move || {
+    //     tokio::runtime::Handle::current().block_on(async move {
+    //         app.run(&mut terminal, &mut conn).await
+    //     })
+    // });
+
     // Restore the terminal state
     ratatui::restore();
 

@@ -7,6 +7,8 @@ pub fn parse_duration_str(s: &str) -> Option<Duration> {
         .filter_map(|x| TimeDelta::from_std(x).ok())
         .next()
 }
+
+/// Truncates any time more fine-grained than seconds
 pub fn format_duration(duration: &Duration) -> String {
     let duration = duration.to_std();
     if let Ok(duration) = duration {
