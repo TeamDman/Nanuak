@@ -9,8 +9,8 @@ use tracing::info;
 // Bring in our modules:
 mod app;
 mod db;
-mod ui;
 pub mod durations;
+mod ui;
 
 use crate::app::App;
 

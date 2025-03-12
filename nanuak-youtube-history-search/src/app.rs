@@ -54,7 +54,6 @@ impl App {
         })
     }
 
-
     pub async fn update_search_results(&mut self, conn: &mut PgConnection) -> Result<()> {
         let pattern = format!("%{}%", self.search_term);
         // Start with a base query

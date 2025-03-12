@@ -1,7 +1,7 @@
 use chrono::Duration;
 use color_eyre::Result;
-use diesel::prelude::*;
 use diesel::PgConnection;
+use diesel::prelude::*;
 use nanuak_schema::youtube::videos;
 
 #[derive(Debug, Queryable)]

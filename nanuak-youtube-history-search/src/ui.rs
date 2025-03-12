@@ -1,12 +1,23 @@
-use ratatui::{
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Line, Span, Text},
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
-    Frame,
-};
+use ratatui::Frame;
+use ratatui::layout::Constraint;
+use ratatui::layout::Direction;
+use ratatui::layout::Layout;
+use ratatui::style::Color;
+use ratatui::style::Modifier;
+use ratatui::style::Style;
+use ratatui::text::Line;
+use ratatui::text::Span;
+use ratatui::text::Text;
+use ratatui::widgets::Block;
+use ratatui::widgets::Borders;
+use ratatui::widgets::List;
+use ratatui::widgets::ListItem;
+use ratatui::widgets::ListState;
+use ratatui::widgets::Paragraph;
 
-use crate::{app::{ActiveInputField, App}, durations::format_duration};
+use crate::app::ActiveInputField;
+use crate::app::App;
+use crate::durations::format_duration;
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
@@ -17,20 +28,22 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 
     // SINGLE-LINE TEXT for the 3 inputs:
     let normal_style = Style::default().fg(Color::White);
-    let active_style = Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+    let active_style = Style::default()
+        .fg(Color::Yellow)
+        .add_modifier(Modifier::BOLD);
 
     let search_span = if app.active_field == ActiveInputField::SearchTerm {
-        Span::styled(format!("{}_",app.search_term.clone()), active_style)
+        Span::styled(format!("{}_", app.search_term.clone()), active_style)
     } else {
         Span::styled(app.search_term.clone(), normal_style)
     };
     let min_span = if app.active_field == ActiveInputField::MinDuration {
-        Span::styled(format!("{}_",app.min_duration.clone()), active_style)
+        Span::styled(format!("{}_", app.min_duration.clone()), active_style)
     } else {
         Span::styled(app.min_duration.clone(), normal_style)
     };
     let max_span = if app.active_field == ActiveInputField::MaxDuration {
-        Span::styled(format!("{}_",app.max_duration.clone()), active_style)
+        Span::styled(format!("{}_", app.max_duration.clone()), active_style)
     } else {
         Span::styled(app.max_duration.clone(), normal_style)
     };
@@ -52,23 +65,25 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let items: Vec<ListItem> = app
         .results
         .iter()
-        .map(|result| ListItem::new(Line::from(vec![
-            Span::styled(
-                &result.title,
-                Style::default()
-                    .fg(Color::LightBlue)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(" "),
-            Span::styled(
-                format!("(https://youtube.com/watch?v={})", result.video_id),
-                Style::default().fg(Color::Gray),
-            ),
-            Span::styled(
-                format!(" [{}]", format_duration(&result.duration)),
-                Style::default().fg(Color::Green),
-            )
-        ])))
+        .map(|result| {
+            ListItem::new(Line::from(vec![
+                Span::styled(
+                    &result.title,
+                    Style::default()
+                        .fg(Color::LightBlue)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(" "),
+                Span::styled(
+                    format!("(https://youtube.com/watch?v={})", result.video_id),
+                    Style::default().fg(Color::Gray),
+                ),
+                Span::styled(
+                    format!(" [{}]", format_duration(&result.duration)),
+                    Style::default().fg(Color::Green),
+                ),
+            ]))
+        })
         .collect();
 
     let results_list = List::new(items)
