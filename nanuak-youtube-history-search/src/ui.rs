@@ -1,3 +1,8 @@
+use crate::app::ActiveInputField;
+use crate::app::App;
+use crate::durations::format_duration;
+use chrono::NaiveDateTime;
+use chrono::Utc;
 use ratatui::Frame;
 use ratatui::layout::Constraint;
 use ratatui::layout::Direction;
@@ -15,74 +20,93 @@ use ratatui::widgets::ListItem;
 use ratatui::widgets::ListState;
 use ratatui::widgets::Paragraph;
 
-use crate::app::ActiveInputField;
-use crate::app::App;
-use crate::durations::format_duration;
+fn format_ago_opt(last_watch: Option<NaiveDateTime>) -> String {
+    if let Some(ts) = last_watch {
+        let now = Utc::now().naive_utc();
+        let diff = now.signed_duration_since(ts);
+        if diff.num_seconds() < 0 {
+            return "time anomaly?".to_string();
+        }
+        format!("{} ago", format_duration(&diff))
+    } else {
+        "never watched".to_string()
+    }
+}
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints([Constraint::Length(4), Constraint::Min(0)].as_ref())
+        .constraints([Constraint::Length(5), Constraint::Min(0)].as_ref())
         .split(f.area());
 
-    // SINGLE-LINE TEXT for the 3 inputs:
     let normal_style = Style::default().fg(Color::White);
     let active_style = Style::default()
         .fg(Color::Yellow)
         .add_modifier(Modifier::BOLD);
 
     let search_span = if app.active_field == ActiveInputField::SearchTerm {
-        Span::styled(format!("{}_", app.search_term.clone()), active_style)
+        Span::styled(format!("{}_", app.search_term), active_style)
     } else {
         Span::styled(app.search_term.clone(), normal_style)
     };
     let min_span = if app.active_field == ActiveInputField::MinDuration {
-        Span::styled(format!("{}_", app.min_duration.clone()), active_style)
+        Span::styled(format!("{}_", app.min_duration), active_style)
     } else {
         Span::styled(app.min_duration.clone(), normal_style)
     };
     let max_span = if app.active_field == ActiveInputField::MaxDuration {
-        Span::styled(format!("{}_", app.max_duration.clone()), active_style)
+        Span::styled(format!("{}_", app.max_duration), active_style)
     } else {
         Span::styled(app.max_duration.clone(), normal_style)
+    };
+    let ago_span = if app.active_field == ActiveInputField::Ago {
+        Span::styled(format!("{}_", app.ago), active_style)
+    } else {
+        Span::styled(app.ago.clone(), normal_style)
     };
 
     let line = Line::from(vec![
         Span::raw("Search: "),
         search_span,
-        Span::raw("  |  MinDur: "),
+        Span::raw(" | MinDur: "),
         min_span,
-        Span::raw("  |  MaxDur: "),
+        Span::raw(" | MaxDur: "),
         max_span,
+        Span::raw(" | Ago: "),
+        ago_span,
     ]);
+
     let filters_paragraph = Paragraph::new(Text::from(line))
         .block(Block::default().borders(Borders::ALL).title("Filters"));
     f.render_widget(filters_paragraph, chunks[0]);
 
-    // The rest remains the same...
-    let results_block = Block::default().borders(Borders::ALL).title("Results");
+    let results_block = Block::default().borders(Borders::ALL).title(format!("Results - {}", app.results.len()));
     let items: Vec<ListItem> = app
         .results
         .iter()
-        .map(|result| {
-            ListItem::new(Line::from(vec![
+        .map(|res| {
+            let ago_str = format_ago_opt(res.last_watch);
+            let dur_str = format_duration(&res.duration);
+
+            // ex: "Title (link) [4m21s], 1w6d ago"
+            let line = Line::from(vec![
                 Span::styled(
-                    &result.title,
+                    res.title.clone(),
                     Style::default()
                         .fg(Color::LightBlue)
                         .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" "),
                 Span::styled(
-                    format!("(https://youtube.com/watch?v={})", result.video_id),
+                    format!("(https://youtube.com/watch?v={})", res.video_id),
                     Style::default().fg(Color::Gray),
                 ),
-                Span::styled(
-                    format!(" [{}]", format_duration(&result.duration)),
-                    Style::default().fg(Color::Green),
-                ),
-            ]))
+                Span::styled(format!(" [{}]", dur_str), Style::default().fg(Color::Green)),
+                Span::raw(", "),
+                Span::styled(ago_str, Style::default().fg(Color::Magenta)),
+            ]);
+            ListItem::new(line)
         })
         .collect();
 
