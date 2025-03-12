@@ -22,7 +22,7 @@ use tracing::info;
 #[derive(Parser, Debug)]
 #[command(version, about = "Ingest YouTube Takeout JSON Files")]
 struct Args {
-    /// Path to the directory containing JSON files
+    /// Path to the directory directly containing JSON files
     #[arg(short, long, value_name = "DIR")]
     ingest_dir: PathBuf,
 }
