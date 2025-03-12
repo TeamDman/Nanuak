@@ -1,1 +1,0 @@
-aider --model gemini/gemini-1.5-pro-latest
