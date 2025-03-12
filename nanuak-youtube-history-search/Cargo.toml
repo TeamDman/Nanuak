@@ -19,3 +19,4 @@ tracing-subscriber = { workspace = true }
 url = { workspace = true }
 r2d2 = { workspace = true }
 ratatui = { rev = "fe8577c0704495c0a98705bc1b036b1a60123f02", git = "https://github.com/ratatui-org/ratatui" }
+humantime = "2.1.0"

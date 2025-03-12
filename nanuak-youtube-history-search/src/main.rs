@@ -4,14 +4,13 @@ use diesel::r2d2::ConnectionManager;
 use diesel::r2d2::Pool;
 use nanuak_config::config::NanuakConfig;
 use nanuak_config::db_url::DatabasePassword;
-use r2d2::PooledConnection;
-use ratatui::DefaultTerminal;
 use tracing::info;
 
 // Bring in our modules:
 mod app;
 mod db;
 mod ui;
+pub mod durations;
 
 use crate::app::App;
 

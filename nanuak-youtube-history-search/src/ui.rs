@@ -1,45 +1,74 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Line, Span},
+    text::{Line, Span, Text},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame,
 };
 
-use crate::app::App;
+use crate::{app::{ActiveInputField, App}, durations::format_duration};
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
-        .constraints([Constraint::Length(3), Constraint::Min(0)].as_ref())
+        .constraints([Constraint::Length(4), Constraint::Min(0)].as_ref())
         .split(f.area());
 
-    // Search box
-    let search_block = Paragraph::new(format!("Search: {}", app.search_term))
-        .block(Block::default().borders(Borders::ALL).title("Search"));
-    f.render_widget(search_block, chunks[0]);
+    // SINGLE-LINE TEXT for the 3 inputs:
+    let normal_style = Style::default().fg(Color::White);
+    let active_style = Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD);
 
-    // Results
+    let search_span = if app.active_field == ActiveInputField::SearchTerm {
+        Span::styled(format!("{}_",app.search_term.clone()), active_style)
+    } else {
+        Span::styled(app.search_term.clone(), normal_style)
+    };
+    let min_span = if app.active_field == ActiveInputField::MinDuration {
+        Span::styled(format!("{}_",app.min_duration.clone()), active_style)
+    } else {
+        Span::styled(app.min_duration.clone(), normal_style)
+    };
+    let max_span = if app.active_field == ActiveInputField::MaxDuration {
+        Span::styled(format!("{}_",app.max_duration.clone()), active_style)
+    } else {
+        Span::styled(app.max_duration.clone(), normal_style)
+    };
+
+    let line = Line::from(vec![
+        Span::raw("Search: "),
+        search_span,
+        Span::raw("  |  MinDur: "),
+        min_span,
+        Span::raw("  |  MaxDur: "),
+        max_span,
+    ]);
+    let filters_paragraph = Paragraph::new(Text::from(line))
+        .block(Block::default().borders(Borders::ALL).title("Filters"));
+    f.render_widget(filters_paragraph, chunks[0]);
+
+    // The rest remains the same...
     let results_block = Block::default().borders(Borders::ALL).title("Results");
     let items: Vec<ListItem> = app
         .results
         .iter()
-        .map(|result| {
-            ListItem::new(Line::from(vec![
-                Span::styled(
-                    &result.title,
-                    Style::default()
-                        .fg(Color::LightBlue)
-                        .add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(" "),
-                Span::styled(
-                    format!("(https://youtube.com/watch?v={})", result.video_id),
-                    Style::default().fg(Color::Gray),
-                ),
-            ]))
-        })
+        .map(|result| ListItem::new(Line::from(vec![
+            Span::styled(
+                &result.title,
+                Style::default()
+                    .fg(Color::LightBlue)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" "),
+            Span::styled(
+                format!("(https://youtube.com/watch?v={})", result.video_id),
+                Style::default().fg(Color::Gray),
+            ),
+            Span::styled(
+                format!(" [{}]", format_duration(&result.duration)),
+                Style::default().fg(Color::Green),
+            )
+        ])))
         .collect();
 
     let results_list = List::new(items)
