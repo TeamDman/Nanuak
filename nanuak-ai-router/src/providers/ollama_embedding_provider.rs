@@ -16,7 +16,7 @@ pub struct OllamaEmbeddingProvider;
 #[async_trait]
 impl EmbeddingProvider for OllamaEmbeddingProvider {
     async fn is_supported(&self, model: &dyn EmbeddingModel) -> eyre::Result<bool> {
-        Ok(model.name() == "ollama")
+        todo!()
     }
     async fn get_embeddings(
         &self,

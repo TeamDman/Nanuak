@@ -6,7 +6,7 @@ use crate::attributes::Residency;
 use crate::embedding_provider::EmbeddingProvider;
 use crate::embedding_request::EmbeddingPayload;
 use crate::embedding_strategy::WellKnownEmbeddingStrategy;
-use crate::well_known_providers::WellKnownEmbeddingProviders;
+use crate::well_known_embedding_providers::WellKnownEmbeddingProviders;
 
 pub struct Embedding(pub Vec<f32>);
 
