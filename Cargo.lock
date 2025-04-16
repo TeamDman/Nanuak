@@ -1768,6 +1768,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanuak-files-index"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "color-eyre",
+ "diesel",
+ "eyre",
+ "nanuak-config",
+ "nanuak-schema",
+ "r2d2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "nanuak-files-index-request"
 version = "0.1.0"
 dependencies = [

@@ -19,6 +19,7 @@ members = [
     "nanuak-picking",
     "nanuak-ai-router",
     "nanuak-youtube-history-search",
+    "nanuak-downloads",
 ]
 
 [workspace.dependencies]
